@@ -1,110 +1,77 @@
-# 🚀 aer Plugin Template
+# 🚀 aer-search-aws-goes
 
-Welcome to the **aer plugin template**! This repository is your starting point for building high-performance, modular plugins for the `aer` ecosystem. 
+The `aer-search-aws-goes` plugin is a high-performance search component for the `aer` ecosystem. It enables efficient discovery of GOES-R series satellite data (GOES-16 through GOES-19) stored in public AWS S3 buckets.
 
-Powered by the [Polylith architecture](https://davidvujic.github.io/python-polylith-docs/setup/) and `uv` for lightning-fast dependency management, this template ensures your plugin is scalable, maintainable, and ready for production.
-
----
-
-## ⚡ Quick Start
-
-If you are new here, **start with the setup script**. It will bootstrap your environment, name your project, and create your first component automatically.
-
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-<details>
-<summary><b>🔍 What does the setup script do?</b></summary>
-
-The `setup.sh` script automates the tedious parts of starting a new Polylith plugin:
-1.  **Validation**: Ensures your project name follows the `aer-` prefix rule.
-2.  **Environment**: Installs `uv` (if missing) and sets up the workspace dependencies.
-3.  **Scaffolding**: Creates your first **Component** (for code) and **Project** (for packaging).
-4.  **Configuration**: Generates a pre-configured `pyproject.toml` with standard entry points so `aer-core` can immediately find your plugin.
-5.  **Git Hooks**: Installs `prek` to ensure high-quality commits from day one.
-</details>
-
-> [!IMPORTANT]
-> The setup script is mandatory for new project initialization. It ensures consistent naming conventions (`aer-` prefix) and registers your plugin entry points correctly.
+Powered by the [Polylith architecture](https://davidvujic.github.io/python-polylith-docs/setup/) and `uv`, this plugin provides a seamless way to query NOAA's GOES data archives without needing to manage complex S3 path logic.
 
 ---
 
-## 🏗️ Architecture Overview
+## ✨ Features
 
-This project uses a **Polylith** structure. Instead of a messy monolith, code is organized into:
+*   **Multi-Satellite Support**: Discover data from GOES-16, GOES-17, GOES-18, and GOES-19.
+*   **Product Coverage**: Specifically optimized for ABI Level 1b Radiance products:
+    *   `ABI-L1b-RadF`: Full Disk
+    *   `ABI-L1b-RadC`: CONUS
+*   **Granular Filtering**: Filter results by exact time ranges and specific ABI channels (Bands 1-16).
+*   **Comprehensive Metadata**: Returns `GeoPandas` dataframes containing:
+    *   `s3_url` and `https_url` for immediate data access.
+    *   Granule IDs, timestamps, and file sizes.
+    *   Fully resolved `aer` Channel objects for further processing.
 
-*   **Components**: Pure logic and functionality (found in `components/`).
-*   **Projects**: Deployable artifacts like PyPI packages (found in `projects/`).
-*   **Bases**: Public APIs or entry points (CLI, FastAPI, etc.).
+---
 
-### Why Polylith?
-It allows you to share code between different projects within the same workspace perfectly, while keeping your deployments lean.
+## 🏗️ Architecture
+
+This repository follows the **Polylith** workspace structure:
+
+*   **Components**: Core logic is located in `components/aer/search_aws_goes/`.
+*   **Projects**: The deployable PyPI package is defined in `projects/aer-search-aws-goes/`.
+*   **Tests**: Comprehensive unit and integration tests (mocked and live AWS) in `test/`.
 
 ---
 
 ## 🛠️ Development Workflow
 
-Once you've run the setup script, here is how you work with your new plugin:
+If you are contributing to this plugin, follow these steps:
 
-### 1. Project Info
-See the state of your workspace, which components are used by which projects:
+### 1. Setup
+Initialize the environment and dependencies:
+```bash
+./setup.sh
+```
+
+### 2. Workspace Status
+Check the status of components and projects:
 ```bash
 uv run poly info
 ```
 
-### 2. Adding Dependencies
-Use `uv` to manage your environment:
-```bash
-uv add requests          # Add to the workspace
-uv add --group dev pytest  # Add development tools
-```
-
 ### 3. Running Tests
-Tests are enabled globally. Run them with:
+The test suite includes both mocked S3 tests and live integration tests:
 ```bash
+# Run all tests
 uv run pytest
+
+# Run only fast, mocked tests
+uv run pytest -m "not integration"
 ```
 
 ---
 
-## 📦 Creating More Components (Advanced)
+## 🚀 Releasing
 
-If your plugin grows and you need to split logic into more components, you can use the Polylith CLI:
+This plugin uses [Conventional Commits](https://www.conventionalcommits.org/) and `python-semantic-release` for automated versioning.
 
-```bash
-# Create a new component
-uv run poly create component --name my_new_feature
-
-# Create a new project (if you want to ship a separate package)
-uv run poly create project --name aer-my-other-package
-```
-
----
-
-## 🚀 Releasing Plugins
-
-Releases are automated using [Conventional Commits](https://www.conventionalcommits.org/) and `python-semantic-release`.
-
-1.  **Commit with prefixes**: Use `feat:`, `fix:`, or `chore:` in your commit messages.
-2.  **Run the release script**:
+1.  Commit changes with prefixes like `feat:`, `fix:`, or `chore:`.
+2.  Run the release script:
     ```bash
-    # Release a specific project
-    python3 .agents/scripts/release.py aer-my-plugin
-
-    # Release all changed projects
-    python3 .agents/scripts/release.py --changed
+    python3 .agents/scripts/release.py aer-search-aws-goes
     ```
 
-### 🤖 Agentic Workflow
-If you are working with **Antigravity** or another AI assistant, you can simply say:
-> "Release my plugin" or "Create a new release for aer-search-earthaccess"
-
-The assistant will use the `new-release` skill to handle the versioning, tagging, and pushing for you.
+The CI/CD pipeline in `.github/workflows/release.yml` will automatically build and publish the package to PyPI upon new tag creation.
 
 ---
 
 ## 📜 License
 
-This template is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
