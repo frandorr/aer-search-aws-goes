@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aer-search-aws-goes"
-version = "1.0.0"
+version = "1.0.1"
 description = "Polylith project for the search-aws-goes plugin"
 readme = "README.md"
 authors = [{ name = "Fran Dorr" }]
