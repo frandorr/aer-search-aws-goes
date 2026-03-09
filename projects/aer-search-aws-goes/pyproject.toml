@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling", "hatch-polylith-bricks"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aer-search-aws-goes"
+version = "0.1.0"
+description = "Polylith project for the search-aws-goes plugin"
+readme = "README.md"
+authors = [{ name = "Fran Dorr" }]
+
+requires-python = ">=3.13"
+
+dependencies = [
+    "aer-core",
+]
+
+[project.urls]
+Homepage = "https://github.com/frandorr/aer-search-aws-goes"
+Issues = "https://github.com/frandorr/aer-search-aws-goes/issues"
+Repository = "https://github.com/frandorr/aer-search-aws-goes"
+
+[project.entry-points."aer.plugins"]
+search_aws_goes = "aer.search_aws_goes.core:search_aws_goes"
+
+[tool.hatch]
+build.hooks.polylith-bricks = {}
+build.targets.wheel.packages = ["aer"]
+
+[tool.polylith]
+bricks."../../components/aer/search_aws_goes" = "aer/search_aws_goes"
