@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "aer-search-aws-goes"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "projects/aer-search-aws-goes" }
 dependencies = [
     { name = "aer-core" },
