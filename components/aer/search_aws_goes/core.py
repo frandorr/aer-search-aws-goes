@@ -63,7 +63,7 @@ def _all_valid_products(products: list[Product]):
     return all(p in VALID_PRODUCTS for p in products)
 
 
-@plugin(name="goes_aws", category="search")
+@plugin(name="aws_goes", category="search")
 def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
     """Search for GOES ABI products on AWS S3.
 
