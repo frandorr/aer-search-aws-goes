@@ -57,7 +57,7 @@ def _find_channel_by_id(
             return ch
     return None
 
-VALID_PRODUCTS = [Product.get(name) for name in ["ABI-L1b-RadF", "ABI-L1b-RadC"]]
+VALID_PRODUCTS = [Product.get(name) for name in ["ABI-L1b-RadF", "ABI-L1b-RadC", "ABI-L1b-RadM"]]
 
 def _all_valid_products(products: list[Product]):
     return all(p in VALID_PRODUCTS for p in products)
@@ -108,7 +108,12 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
         if not product.name.startswith("ABI-L1b-Rad"):
             continue
 
-        for satellite in product.supported_satellites:
+        if query.satellites is not None:
+            requested_satellites = query.satellites
+        else:
+            requested_satellites = product.supported_satellites
+
+        for satellite in requested_satellites:
             bucket = sat_to_bucket.get(satellite.name)
             if not bucket:
                 continue
