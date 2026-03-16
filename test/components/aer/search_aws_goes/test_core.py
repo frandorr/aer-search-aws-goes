@@ -6,6 +6,7 @@ from aer.search import SearchQuery
 from aer.search_aws_goes import search_aws_goes
 from aer.temporal import TimeRange
 from aer.spectral import Product
+from aer.spatial import GridSpatialExtent
 
 
 def get_channel(pid, cid):
@@ -16,6 +17,9 @@ ABI_L1B_RADF_AWS = Product.get("ABI-L1b-RadF")
 ABI_BAND_1 = get_channel("ABI-L1b-RadF", "1")
 ABI_BAND_13 = get_channel("ABI-L1b-RadF", "13")
 
+# Dummy spatial extent for testing
+DUMMY_SPATIAL_EXTENT = GridSpatialExtent(grid_cells=frozenset())
+
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_empty(mock_s3_cls):
@@ -25,12 +29,21 @@ def test_search_aws_goes_empty(mock_s3_cls):
     )
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
-    query = SearchQuery(products=[ABI_L1B_RADF_AWS], time_range=time_range)
+    query = SearchQuery(
+        products=[ABI_L1B_RADF_AWS],
+        time_range=time_range,
+        spatial_extent=DUMMY_SPATIAL_EXTENT,
+        satellites=(),
+        channels=(),
+    )
     gdf = search_aws_goes(query)
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert gdf.empty
     assert "product_name" in gdf.columns
     assert "channels" in gdf.columns
+    assert "input_spatial_extent" in gdf.columns
+    assert "overlapping_spatial_extent" in gdf.columns
+    assert "cell_overlap_mode" in gdf.columns
 
 
 @patch("s3fs.S3FileSystem")
@@ -53,7 +66,13 @@ def test_search_aws_goes_results(mock_s3_cls):
         [{"name": path, "size": 1024 * 1024}] if p == prefix else []
     )
 
-    query = SearchQuery(products=[ABI_L1B_RADF_AWS], time_range=time_range)
+    query = SearchQuery(
+        products=[ABI_L1B_RADF_AWS],
+        time_range=time_range,
+        spatial_extent=DUMMY_SPATIAL_EXTENT,
+        satellites=(),
+        channels=(),
+    )
     gdf = search_aws_goes(query)
 
     assert not gdf.empty
@@ -63,6 +82,9 @@ def test_search_aws_goes_results(mock_s3_cls):
     assert gdf.iloc[0]["size_mb"] == 1.0
     # channels column should contain the matching ABI band 1
     assert gdf.iloc[0]["channels"] == (ABI_BAND_1,)
+    assert gdf.iloc[0]["input_spatial_extent"] == DUMMY_SPATIAL_EXTENT
+    assert gdf.iloc[0]["overlapping_spatial_extent"] == DUMMY_SPATIAL_EXTENT
+    assert gdf.iloc[0]["cell_overlap_mode"] == "contains"
 
 
 @patch("s3fs.S3FileSystem")
@@ -90,12 +112,15 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
         products=[ABI_L1B_RADF_AWS],
         time_range=time_range,
         channels=(ABI_BAND_13,),
+        spatial_extent=DUMMY_SPATIAL_EXTENT,
+        satellites=(),
     )
     gdf = search_aws_goes(query)
 
     assert len(gdf) == 1
     assert "C13" in gdf.iloc[0]["granule_id"]
     assert gdf.iloc[0]["channels"] == (ABI_BAND_13,)
+    assert gdf.iloc[0]["input_spatial_extent"] == DUMMY_SPATIAL_EXTENT
 
 
 @pytest.mark.integration
@@ -106,9 +131,16 @@ def test_search_aws_goes_real():
         start=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end=datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc),
     )
-    query = SearchQuery(products=[ABI_L1B_RADF_AWS], time_range=time_range)
+    query = SearchQuery(
+        products=[ABI_L1B_RADF_AWS],
+        time_range=time_range,
+        spatial_extent=DUMMY_SPATIAL_EXTENT,
+        satellites=(),
+        channels=(),
+    )
     gdf = search_aws_goes(query)
 
     assert not gdf.empty, "Expected to find GOES files on AWS for 2024-001 12:00"
     assert "s3_url" in gdf.columns
     assert gdf.iloc[0]["product_name"] == "ABI-L1b-RadF"
+    assert "input_spatial_extent" in gdf.columns

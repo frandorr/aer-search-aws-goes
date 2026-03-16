@@ -18,7 +18,7 @@ members = [
 
 [[package]]
 name = "aer-core"
-version = "2.0.0"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -34,21 +34,29 @@ dependencies = [
     { name = "structlog" },
     { name = "utm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/91/6f96e0b4cff0fe1e4f9de058154c8412219160767c1ed0c57372b3c60166/aer_core-2.0.0.tar.gz", hash = "sha256:899e6339b816742980d401f1967a86ef546b171434d070eaeaab1f9e2b15151d", size = 726471, upload-time = "2026-03-10T19:47:53.079Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/aa/03f7d1d2e0326fb53b28d84e201dfb043fb0ae9b1baedeefd27009215a25/aer_core-3.0.0.tar.gz", hash = "sha256:0f97ca362668e1466c424744955fa2ea7ae0534e333761d352d2369b899a191b", size = 730385, upload-time = "2026-03-16T14:28:27.3Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/0c/6b180f5010bc8d73b2d26bc916c8193bed0c002b3c142ccc609c2df0af7c/aer_core-2.0.0-py3-none-any.whl", hash = "sha256:638fac59febf234553c0861b63fad823519b9a8556fc3845c167207dabe12e3e", size = 742310, upload-time = "2026-03-10T19:47:51.2Z" },
+    { url = "https://files.pythonhosted.org/packages/60/37/02a394ecd1600b54c7765fe39306e071359b6f155b671d4f4f05dddde72e/aer_core-3.0.0-py3-none-any.whl", hash = "sha256:2c593d3b7b59ef95f5ccfae360947accd31c44bf4252ae880cf5b75c64b6048a", size = 750052, upload-time = "2026-03-16T14:28:25.551Z" },
 ]
 
 [[package]]
 name = "aer-search-aws-goes"
-version = "2.1.0"
+version = "2.1.1"
 source = { editable = "projects/aer-search-aws-goes" }
 dependencies = [
     { name = "aer-core" },
+    { name = "geopandas" },
+    { name = "pandera", extra = ["geopandas"] },
+    { name = "s3fs" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "aer-core" }]
+requires-dist = [
+    { name = "aer-core" },
+    { name = "geopandas", specifier = ">=1.1.2,<2.0.0" },
+    { name = "pandera", extras = ["geopandas"], specifier = ">=0.24.0,<0.25.0" },
+    { name = "s3fs", specifier = ">=2026.2.0,<2027.0.0" },
+]
 
 [[package]]
 name = "aer-search-aws-goes-workspace"

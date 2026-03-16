@@ -73,11 +73,15 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
     When ``query.channels`` is set, only files matching the requested bands are
     returned.  Each result row includes a ``channels`` column containing the
     matching :class:`Channel` as a single-element tuple.
+
+    .. note::
+        This plugin assumes that the input ``spatial_extent`` is between bounds
+        for GOES satellite projection.
     """
     # check if any of the products are valid
     if not _all_valid_products(query.products):
         raise ValueError("Invalid product in query {}".format(query.products))
-    
+
     fs = s3fs.S3FileSystem(anon=True)
     rows = []
 
@@ -90,7 +94,7 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
 
     # Build a set of requested channel IDs for fast lookup
     requested_channel_ids: set[str] | None = None
-    if query.channels is not None:
+    if query.channels:
         requested_channel_ids = {ch.c_id for ch in query.channels}
 
     # Generate hourly prefixes to scan
@@ -108,7 +112,7 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
         if not product.name.startswith("ABI-L1b-Rad"):
             continue
 
-        if query.satellites is not None:
+        if query.satellites:
             requested_satellites = query.satellites
         else:
             requested_satellites = product.supported_satellites
@@ -167,6 +171,9 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                                 "size_mb": f_info["size"] / (1024 * 1024),
                                 "channels": (file_channel,) if file_channel else (),
                                 "geometry": None,
+                                "input_spatial_extent": query.spatial_extent,
+                                "overlapping_spatial_extent": query.spatial_extent,
+                                "cell_overlap_mode": query.cell_overlap_mode,
                             }
                         )
                 except Exception as e:
@@ -186,6 +193,9 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                 "size_mb",
                 "channels",
                 "geometry",
+                "input_spatial_extent",
+                "overlapping_spatial_extent",
+                "cell_overlap_mode",
             ],
             geometry="geometry",
         )
