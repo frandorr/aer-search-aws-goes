@@ -15,7 +15,7 @@ logger = get_logger()
 
 
 def _parse_goes_filename(filename: str) -> dict[str, Any]:
-    """Parse start/end times and bandownload_aria2d channel ID from a GOES-R filename.
+    """Parse start/end times and band channel ID from a GOES-R filename.
 
     Example: OR_ABI-L1b-RadF-M6C01_G16_s202312312345678_e202312312354567_c202312312355432.nc
 
@@ -154,11 +154,16 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                             continue
 
                         # Resolve the Channel object for this file
-                        file_channel = (
-                            _find_channel_by_id(product.channels, file_channel_id)
-                            if file_channel_id
-                            else None
-                        )
+                        file_channel = None
+                        if file_channel_id:
+                            file_channel = _find_channel_by_id(product.channels, file_channel_id)
+                            if file_channel is None:
+                                logger.warning(
+                                    "Channel ID found in filename but missing from product channels",
+                                    channel_id=file_channel_id,
+                                    product=product.name,
+                                    filename=filename,
+                                )
 
                         rows.append(
                             {
@@ -176,9 +181,9 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                                 "cell_overlap_mode": query.cell_overlap_mode,
                             }
                         )
-                except Exception as e:
+                except FileNotFoundError as e:
                     logger.debug(
-                        "S3 prefix not found or error", prefix=prefix, error=str(e)
+                        "S3 prefix not found", prefix=prefix, error=str(e)
                     )
 
     if not rows:

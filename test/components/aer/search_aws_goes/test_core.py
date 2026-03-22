@@ -84,7 +84,7 @@ def test_search_aws_goes_results(mock_s3_cls):
     assert gdf.iloc[0]["channels"] == (ABI_BAND_1,)
     assert gdf.iloc[0]["input_spatial_extent"] == DUMMY_SPATIAL_EXTENT
     assert gdf.iloc[0]["overlapping_spatial_extent"] == DUMMY_SPATIAL_EXTENT
-    assert gdf.iloc[0]["cell_overlap_mode"] == "contains"
+    assert gdf.iloc[0]["cell_overlap_mode"] == query.cell_overlap_mode
 
 
 @patch("s3fs.S3FileSystem")
