@@ -101,6 +101,10 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
     search_start = query.time_range.start.replace(minute=0, second=0, microsecond=0)
     search_end = query.time_range.end
 
+    # Ensure timezone awareness for comparisons against S3 file metadata
+    q_start = query.time_range.start.replace(tzinfo=timezone.utc) if query.time_range.start.tzinfo is None else query.time_range.start
+    q_end = query.time_range.end.replace(tzinfo=timezone.utc) if query.time_range.end.tzinfo is None else query.time_range.end
+
     current_hour = search_start
     hourly_steps = []
     while current_hour <= search_end:
@@ -140,8 +144,8 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
 
                         # Filter by exact time range
                         if (
-                            meta["start_time"] > query.time_range.end
-                            or meta["end_time"] < query.time_range.start
+                            meta["start_time"] > q_end
+                            or meta["end_time"] < q_start
                         ):
                             continue
 
