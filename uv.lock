@@ -18,7 +18,7 @@ members = [
 
 [[package]]
 name = "aer-core"
-version = "3.2.0"
+version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -34,14 +34,14 @@ dependencies = [
     { name = "structlog" },
     { name = "utm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/75/1a/d3bba850d3bc660d14451dfe2e88f05941115f228fb31d490d1e7ff16b67/aer_core-3.2.0.tar.gz", hash = "sha256:902b1a18d31100ab44c419fb2292f88f6b2580a5751a801f75eca45882f0dcd9", size = 731185, upload-time = "2026-03-25T00:25:13.793Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/95/6a/f839bf3f9abd3a153b40e1232f79c89261e71ab65fa8ff9d5c1db236e8e8/aer_core-3.3.1.tar.gz", hash = "sha256:b9b8530832d7b06483baff8995c402f48bb9b2fb8dc64011ed07cf497914c0be", size = 26648, upload-time = "2026-03-25T20:17:14.332Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/0a/0ff9fb62d405aec62b7fcc642de7a345a2aa644fa8ace74e0b6c600137f4/aer_core-3.2.0-py3-none-any.whl", hash = "sha256:34b4708f05625218198eb04ac15a46a048dbaee49d9bd01969ca68301087b1e1", size = 751490, upload-time = "2026-03-25T00:25:11.792Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/1c/c7ffbd20a8565559212902bc30cdc63e97e40b386ba35df0575b09185065/aer_core-3.3.1-py3-none-any.whl", hash = "sha256:b355faaa8157fb97fe67108511f52a9e682b14d6ddf3e7adbdb2c6370ccbac2d", size = 35151, upload-time = "2026-03-25T20:17:12.955Z" },
 ]
 
 [[package]]
 name = "aer-search-aws-goes"
-version = "2.2.1"
+version = "2.3.0"
 source = { editable = "projects/aer-search-aws-goes" }
 dependencies = [
     { name = "aer-core" },
@@ -229,11 +229,11 @@ wheels = [
 
 [[package]]
 name = "attrs"
-version = "25.4.0"
+version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6b/5c/685e6633917e101e5dcb62b9dd76946cbb57c26e133bae9e0cd36033c0a9/attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11", size = 934251, upload-time = "2025-10-06T13:54:44.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32", size = 952055, upload-time = "2026-03-19T14:22:25.026Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373", size = 67615, upload-time = "2025-10-06T13:54:43.17Z" },
+    { url = "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309", size = 67548, upload-time = "2026-03-19T14:22:23.645Z" },
 ]
 
 [[package]]
@@ -1385,7 +1385,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.32.5"
+version = "2.33.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -1393,9 +1393,9 @@ dependencies = [
     { name = "idna" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/64/8860370b167a9721e8956ae116825caff829224fbca0ca6e7bf8ddef8430/requests-2.33.0.tar.gz", hash = "sha256:c7ebc5e8b0f21837386ad0e1c8fe8b829fa5f544d8df3b2253bff14ef29d7652", size = 134232, upload-time = "2026-03-25T15:10:41.586Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
+    { url = "https://files.pythonhosted.org/packages/56/5d/c814546c2333ceea4ba42262d8c4d55763003e767fa169adc693bd524478/requests-2.33.0-py3-none-any.whl", hash = "sha256:3324635456fa185245e24865e810cecec7b4caf933d7eb133dcde67d48cee69b", size = 65017, upload-time = "2026-03-25T15:10:40.382Z" },
 ]
 
 [[package]]
