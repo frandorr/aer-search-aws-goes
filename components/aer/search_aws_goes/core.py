@@ -257,5 +257,39 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
     gdf = gpd.GeoDataFrame(rows, geometry="geometry")
     return SearchResultSchema.validate(gdf)
 
-    gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-    return SearchResultSchema.validate(gdf)
+
+def serialize_search_results(gdf: GeoDataFrame["SearchResultSchema"]) -> gpd.GeoDataFrame:
+    """Prepare SearchResultSchema GeoDataFrame for Parquet storage by serializing object columns.
+
+    The 'channel' column containing Channel objects is converted to channel IDs (strings),
+    which can be restored later using deserialize_search_results.
+    """
+    df = gdf.copy()
+    if "channel" in df.columns:
+        df["channel"] = df["channel"].apply(lambda x: x.c_id if hasattr(x, "c_id") else x)
+    return df
+
+
+def deserialize_search_results(gdf: gpd.GeoDataFrame) -> GeoDataFrame["SearchResultSchema"]:
+    """Restore SearchResultSchema GeoDataFrame from Parquet storage by deserializing object columns.
+
+    The 'channel' column containing channel IDs (strings) is converted back to Channel objects
+    using the product_id and c_id.
+    """
+    df = gdf.copy()
+    if "channel" in df.columns and "product_id" in df.columns:
+
+        def restore_channel(row):
+            p_id = row["product_id"]
+            c_id = row["channel"]
+            if not isinstance(c_id, str):
+                return c_id
+            try:
+                product = Product.get(p_id)
+                return next((c for c in product.channels if c.c_id == c_id), None)
+            except (KeyError, StopIteration):
+                return None
+
+        df["channel"] = df.apply(restore_channel, axis=1)
+
+    return SearchResultSchema.validate(df)
