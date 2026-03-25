@@ -15,7 +15,7 @@ echo ""
 
 # 1- Project name should start with aer-
 echo -e "${BOLD}1. Project Configuration${NC}"
-read -p "Enter your project name (e.g., aer-search-earthaccess): " PROJECT_NAME
+read -p "Enter your project name (e.g., aer-search-aws-goes): " PROJECT_NAME
 if [[ ! $PROJECT_NAME =~ ^aer- ]]; then
     echo -e "${RED}Error: Project name must start with 'aer-'${NC}"
     exit 1

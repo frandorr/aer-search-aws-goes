@@ -8,6 +8,7 @@ from structlog import get_logger
 
 from aer.plugin import plugin
 from aer.search import SearchQuery, SearchResultSchema
+from aer.spatial import GridSpatialExtent
 from aer.spectral import Channel, Product
 from pandera.typing.geopandas import GeoDataFrame
 
@@ -30,9 +31,7 @@ def _parse_goes_filename(filename: str) -> dict[str, Any]:
     end_str = match.group(2)
 
     try:
-        start_time = datetime.strptime(start_str, "%Y%j%H%M%S").replace(
-            tzinfo=timezone.utc
-        )
+        start_time = datetime.strptime(start_str, "%Y%j%H%M%S").replace(tzinfo=timezone.utc)
         end_time = datetime.strptime(end_str, "%Y%j%H%M%S").replace(tzinfo=timezone.utc)
     except ValueError:
         return {}
@@ -48,16 +47,16 @@ def _parse_goes_filename(filename: str) -> dict[str, Any]:
     }
 
 
-def _find_channel_by_id(
-    product_channels: tuple[Channel, ...], c_id: str
-) -> Channel | None:
+def _find_channel_by_id(product_channels: tuple[Channel, ...], c_id: str) -> Channel | None:
     """Look up the Channel object matching a channel ID from a product's channel list."""
     for ch in product_channels:
         if ch.c_id == c_id:
             return ch
     return None
 
+
 VALID_PRODUCTS = [Product.get(name) for name in ["ABI-L1b-RadF", "ABI-L1b-RadC", "ABI-L1b-RadM"]]
+
 
 def _all_valid_products(products: list[Product]):
     return all(p in VALID_PRODUCTS for p in products)
@@ -102,8 +101,16 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
     search_end = query.time_range.end
 
     # Ensure timezone awareness for comparisons against S3 file metadata
-    q_start = query.time_range.start.replace(tzinfo=timezone.utc) if query.time_range.start.tzinfo is None else query.time_range.start
-    q_end = query.time_range.end.replace(tzinfo=timezone.utc) if query.time_range.end.tzinfo is None else query.time_range.end
+    q_start = (
+        query.time_range.start.replace(tzinfo=timezone.utc)
+        if query.time_range.start.tzinfo is None
+        else query.time_range.start
+    )
+    q_end = (
+        query.time_range.end.replace(tzinfo=timezone.utc)
+        if query.time_range.end.tzinfo is None
+        else query.time_range.end
+    )
 
     current_hour = search_start
     hourly_steps = []
@@ -143,18 +150,12 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                             continue
 
                         # Filter by exact time range
-                        if (
-                            meta["start_time"] > q_end
-                            or meta["end_time"] < q_start
-                        ):
+                        if meta["start_time"] > q_end or meta["end_time"] < q_start:
                             continue
 
                         # Filter by channel if requested
                         file_channel_id = meta.get("channel_id")
-                        if (
-                            requested_channel_ids is not None
-                            and file_channel_id not in requested_channel_ids
-                        ):
+                        if requested_channel_ids is not None and file_channel_id not in requested_channel_ids:
                             continue
 
                         # Resolve the Channel object for this file
@@ -169,46 +170,92 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
                                     filename=filename,
                                 )
 
-                        rows.append(
-                            {
-                                "product_name": product.name,
-                                "granule_id": filename,
-                                "start_time": meta["start_time"],
-                                "end_time": meta["end_time"],
-                                "s3_url": f"s3://{f_path}",
-                                "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
-                                "size_mb": f_info["size"] / (1024 * 1024),
-                                "channels": (file_channel,) if file_channel else (),
-                                "geometry": None,
-                                "input_spatial_extent": query.spatial_extent,
-                                "overlapping_spatial_extent": query.spatial_extent,
-                                "cell_overlap_mode": query.cell_overlap_mode,
-                            }
+                        if not file_channel:
+                            continue
+
+                        base_row = {
+                            "product_id": product.name,
+                            "granule_id": filename,
+                            "start_time": meta["start_time"],
+                            "end_time": meta["end_time"],
+                            "s3_url": f"s3://{f_path}",
+                            "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
+                            "size_mb": f_info["size"] / (1024 * 1024),
+                            "overlap_mode": query.cell_overlap_mode,
+                        }
+
+                        # GOES files don't have per-granule geometry, use spatial_extent directly
+                        if not query.spatial_extent or not query.spatial_extent.grid_cells:
+                            # If no spatial extent requested, we can't really return anything in this grid-exploded schema
+                            # but we might have a default single cell or something?
+                            # For now, if no cells are in extent, skip.
+                            continue
+
+                        # Calculate overlapping grid cells
+                        overlap_fn = lambda cell: (
+                            cell.bounds.intersects(cell.bounds)
+                            if query.cell_overlap_mode == "contains"
+                            else cell.bounds.intersects(cell.bounds)
                         )
+                        overlapping_cells = [cell for cell in query.spatial_extent.grid_cells if overlap_fn(cell)]
+
+                        if not overlapping_cells:
+                            continue
+
+                        for cell in overlapping_cells:
+                            cell_name = f"{cell.row}_{cell.col}"
+                            unique_id = f"{cell_name}_{file_channel.c_id}_{filename}"
+                            # Parse row_idx and col_idx from the row/col strings (e.g., '123U' -> 123)
+                            row_idx = int(cell.row[:-1])
+                            col_idx = int(cell.col[:-1])
+                            utm_zone = cell.epsg.split(":")[-1]
+
+                            rows.append(
+                                SearchResultSchema.from_grid_cell(
+                                    cell,
+                                    file_channel,
+                                    unique_id=unique_id,
+                                    name=cell_name,
+                                    geometry=cell.bounds,
+                                    row_idx=row_idx,
+                                    col_idx=col_idx,
+                                    utm_zone=utm_zone,
+                                    **base_row,
+                                )
+                            )
+
                 except FileNotFoundError as e:
-                    logger.debug(
-                        "S3 prefix not found", prefix=prefix, error=str(e)
-                    )
+                    logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
 
     if not rows:
         gdf = gpd.GeoDataFrame(
             columns=[
-                "product_name",
+                "unique_id",
+                "name",
+                "product_id",
                 "granule_id",
                 "start_time",
                 "end_time",
                 "s3_url",
                 "https_url",
                 "size_mb",
-                "channels",
                 "geometry",
-                "input_spatial_extent",
-                "overlapping_spatial_extent",
-                "cell_overlap_mode",
+                "row",
+                "col",
+                "row_idx",
+                "col_idx",
+                "utm_zone",
+                "epsg",
+                "cell_bounds",
+                "channel",
+                "overlap_mode",
             ],
             geometry="geometry",
         )
         return SearchResultSchema.validate(gdf)
+
+    gdf = gpd.GeoDataFrame(rows, geometry="geometry")
+    return SearchResultSchema.validate(gdf)
 
     gdf = gpd.GeoDataFrame(rows, geometry="geometry")
     return SearchResultSchema.validate(gdf)

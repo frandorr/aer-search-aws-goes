@@ -23,7 +23,7 @@ name: Publish Plugin to PyPI
 on:
   push:
     tags:
-      - "aer-*-v*" # Triggers on tags like aer-search-earthaccess-v1.0.0
+      - "aer-*-v*" # Triggers on tags like aer-search-aws-goes-v1.0.0
 
 jobs:
   publish:
@@ -48,7 +48,7 @@ jobs:
       - name: Extract Project Name
         id: meta
         run: |
-          # Extract prefix (e.g. aer-search-earthaccess) from aer-search-earthaccess-v1.0.0
+          # Extract prefix (e.g. aer-search-aws-goes) from aer-search-aws-goes-v1.0.0
           TAG=${GITHUB_REF#refs/tags/}
           PROJECT=$(echo $TAG | sed -E 's/-v[0-9].*$//')
           echo "project=$PROJECT" >> $GITHUB_OUTPUT
