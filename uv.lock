@@ -18,7 +18,7 @@ members = [
 
 [[package]]
 name = "aer-core"
-version = "3.1.0"
+version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -34,14 +34,14 @@ dependencies = [
     { name = "structlog" },
     { name = "utm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/56/1e196cb53d9475c90cd2cae3b318874afbf8c07d57b592b6f4279125f8ee/aer_core-3.1.0.tar.gz", hash = "sha256:bc494ba4bfe1259cec42fa8ad4978d1459bba90cdf8c6f334659319dfe369f2e", size = 731019, upload-time = "2026-03-19T20:37:46.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/1a/d3bba850d3bc660d14451dfe2e88f05941115f228fb31d490d1e7ff16b67/aer_core-3.2.0.tar.gz", hash = "sha256:902b1a18d31100ab44c419fb2292f88f6b2580a5751a801f75eca45882f0dcd9", size = 731185, upload-time = "2026-03-25T00:25:13.793Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/2b/f8e44eb314aeff5777ac28ac07f004841630ada76a7b055b53fb363f40b2/aer_core-3.1.0-py3-none-any.whl", hash = "sha256:fa9fa9134f012aa9f45eca41d5e6f50c969998e7e7abd9819c44c0095bea9752", size = 751228, upload-time = "2026-03-19T20:37:43.895Z" },
+    { url = "https://files.pythonhosted.org/packages/df/0a/0ff9fb62d405aec62b7fcc642de7a345a2aa644fa8ace74e0b6c600137f4/aer_core-3.2.0-py3-none-any.whl", hash = "sha256:34b4708f05625218198eb04ac15a46a048dbaee49d9bd01969ca68301087b1e1", size = 751490, upload-time = "2026-03-25T00:25:11.792Z" },
 ]
 
 [[package]]
 name = "aer-search-aws-goes"
-version = "2.2.0"
+version = "2.2.1"
 source = { editable = "projects/aer-search-aws-goes" }
 dependencies = [
     { name = "aer-core" },
