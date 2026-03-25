@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
 import re
 from typing import Any
 
@@ -204,24 +205,23 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
 
                         for cell in overlapping_cells:
                             cell_name = f"{cell.row}_{cell.col}"
-                            unique_id = f"{cell_name}_{file_channel.c_id}_{filename}"
-                            # Parse row_idx and col_idx from the row/col strings (e.g., '123U' -> 123)
-                            row_idx = int(cell.row[:-1])
-                            col_idx = int(cell.col[:-1])
-                            utm_zone = cell.epsg.split(":")[-1]
+                            raw_id = f"{cell_name}_{file_channel.c_id}_{filename}"
+                            unique_id = hashlib.md5(raw_id.encode("utf-8")).hexdigest()
 
                             rows.append(
-                                SearchResultSchema.from_grid_cell(
-                                    cell,
-                                    file_channel,
-                                    unique_id=unique_id,
-                                    name=cell_name,
-                                    geometry=cell.bounds,
-                                    row_idx=row_idx,
-                                    col_idx=col_idx,
-                                    utm_zone=utm_zone,
+                                {
+                                    "name": cell_name,
+                                    "row": cell.row,
+                                    "col": cell.col,
+                                    "utm_zone": cell.epsg.split(":")[-1],
+                                    "epsg": cell.epsg,
+                                    "dist": cell.dist,
+                                    "geometry": cell.bounds,
+                                    "cell_bounds": cell.bounds,
+                                    "unique_id": unique_id,
+                                    "channel": file_channel,
                                     **base_row,
-                                )
+                                }
                             )
 
                 except FileNotFoundError as e:
@@ -229,67 +229,10 @@ def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
 
     if not rows:
         gdf = gpd.GeoDataFrame(
-            columns=[
-                "unique_id",
-                "name",
-                "product_id",
-                "granule_id",
-                "start_time",
-                "end_time",
-                "s3_url",
-                "https_url",
-                "size_mb",
-                "geometry",
-                "row",
-                "col",
-                "row_idx",
-                "col_idx",
-                "utm_zone",
-                "epsg",
-                "cell_bounds",
-                "channel",
-                "overlap_mode",
-            ],
+            columns=list(SearchResultSchema.to_schema().columns.keys()),
             geometry="geometry",
         )
         return SearchResultSchema.validate(gdf)
 
     gdf = gpd.GeoDataFrame(rows, geometry="geometry")
     return SearchResultSchema.validate(gdf)
-
-
-def serialize_search_results(gdf: GeoDataFrame["SearchResultSchema"]) -> gpd.GeoDataFrame:
-    """Prepare SearchResultSchema GeoDataFrame for Parquet storage by serializing object columns.
-
-    The 'channel' column containing Channel objects is converted to channel IDs (strings),
-    which can be restored later using deserialize_search_results.
-    """
-    df = gdf.copy()
-    if "channel" in df.columns:
-        df["channel"] = df["channel"].apply(lambda x: x.c_id if hasattr(x, "c_id") else x)
-    return df
-
-
-def deserialize_search_results(gdf: gpd.GeoDataFrame) -> GeoDataFrame["SearchResultSchema"]:
-    """Restore SearchResultSchema GeoDataFrame from Parquet storage by deserializing object columns.
-
-    The 'channel' column containing channel IDs (strings) is converted back to Channel objects
-    using the product_id and c_id.
-    """
-    df = gdf.copy()
-    if "channel" in df.columns and "product_id" in df.columns:
-
-        def restore_channel(row):
-            p_id = row["product_id"]
-            c_id = row["channel"]
-            if not isinstance(c_id, str):
-                return c_id
-            try:
-                product = Product.get(p_id)
-                return next((c for c in product.channels if c.c_id == c_id), None)
-            except (KeyError, StopIteration):
-                return None
-
-        df["channel"] = df.apply(restore_channel, axis=1)
-
-    return SearchResultSchema.validate(df)
