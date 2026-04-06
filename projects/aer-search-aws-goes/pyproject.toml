@@ -24,7 +24,7 @@ Issues = "https://github.com/frandorr/aer-search-aws-goes/issues"
 Repository = "https://github.com/frandorr/aer-search-aws-goes"
 
 [project.entry-points."aer.plugins"]
-search_aws_goes = "aer.search_aws_goes.core:search_aws_goes"
+search_aws_goes = "aer.search_aws_goes.core:AwsGoesSearchPlugin"
 
 [tool.hatch]
 build.dev-mode-dirs = [ "../../components", "../../bases", "../../development", "." ]

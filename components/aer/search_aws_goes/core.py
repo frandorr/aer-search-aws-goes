@@ -5,13 +5,14 @@ from typing import Any
 
 import s3fs
 import geopandas as gpd
+from shapely.geometry import Polygon
 from structlog import get_logger
 
-from aer.plugin import plugin
-from aer.search import SearchQuery, SearchResultSchema
-from aer.spatial import GridSpatialExtent
-from aer.spectral import Channel, Product
+from aer.plugin.core import hookimpl, SearchResultSchema
+from aer.spatial import GeomLike
+from aer.temporal import TimeRange
 from pandera.typing.geopandas import GeoDataFrame
+
 
 logger = get_logger()
 
@@ -48,191 +49,133 @@ def _parse_goes_filename(filename: str) -> dict[str, Any]:
     }
 
 
-def _find_channel_by_id(product_channels: tuple[Channel, ...], c_id: str) -> Channel | None:
-    """Look up the Channel object matching a channel ID from a product's channel list."""
-    for ch in product_channels:
-        if ch.c_id == c_id:
-            return ch
-    return None
+class AwsGoesSearchPlugin:
+    @hookimpl
+    def search(
+        self,
+        collections: list[str],
+        intersects: GeomLike | None,
+        time_range: TimeRange | None,
+        search_params: dict | None = None,
+    ) -> GeoDataFrame["SearchResultSchema"]:
+        """Search for GOES ABI products on AWS S3.
 
+        This plugin traverses the NOAA GOES S3 buckets (noaa-goes16, noaa-goes17, etc.)
+        by year/day/hour based on the requested time range.
 
-VALID_PRODUCTS = [Product.get(name) for name in ["ABI-L1b-RadF", "ABI-L1b-RadC", "ABI-L1b-RadM"]]
+        When channel filters are provided via search_params["channels"],
+        only files matching those bands are returned.
+        """
+        if search_params is None:
+            search_params = {}
 
+        fs = s3fs.S3FileSystem(anon=True)
+        rows: list[dict[str, Any]] = []
 
-def _all_valid_products(products: list[Product]):
-    return all(p in VALID_PRODUCTS for p in products)
+        sat_to_bucket = {
+            "GOES-16": "noaa-goes16",
+            "GOES-17": "noaa-goes17",
+            "GOES-18": "noaa-goes18",
+            "GOES-19": "noaa-goes19",
+        }
 
+        requested_channel_ids: set[str] | None = None
+        if "channels" in search_params:
+            requested_channel_ids = set(search_params["channels"])
 
-@plugin(name="aws_goes", category="search")
-def search_aws_goes(query: SearchQuery) -> GeoDataFrame["SearchResultSchema"]:
-    """Search for GOES ABI products on AWS S3.
+        requested_satellites: list[str] | set[str] = list(sat_to_bucket.keys())
+        if "satellites" in search_params:
+            requested_satellites = set(search_params["satellites"])
 
-    This plugin traverses the NOAA GOES S3 buckets (noaa-goes16, noaa-goes17, etc.)
-    by year/day/hour based on the requested time range.
+        if not time_range:
+            return self._empty_result()
 
-    When ``query.channels`` is set, only files matching the requested bands are
-    returned.  Each result row includes a ``channels`` column containing the
-    matching :class:`Channel` as a single-element tuple.
+        search_start = time_range.start.replace(minute=0, second=0, microsecond=0)
+        search_end = time_range.end
 
-    .. note::
-        This plugin assumes that the input ``spatial_extent`` is between bounds
-        for GOES satellite projection.
-    """
-    # check if any of the products are valid
-    if not _all_valid_products(query.products):
-        raise ValueError("Invalid product in query {}".format(query.products))
+        q_start = (
+            time_range.start.replace(tzinfo=timezone.utc)
+            if time_range.start.tzinfo is None
+            else time_range.start
+        )
+        q_end = (
+            time_range.end.replace(tzinfo=timezone.utc)
+            if time_range.end.tzinfo is None
+            else time_range.end
+        )
 
-    fs = s3fs.S3FileSystem(anon=True)
-    rows = []
+        current_hour = search_start
+        hourly_steps = []
+        while current_hour <= search_end:
+            hourly_steps.append(current_hour)
+            current_hour += timedelta(hours=1)
 
-    sat_to_bucket = {
-        "GOES-16": "noaa-goes16",
-        "GOES-17": "noaa-goes17",
-        "GOES-18": "noaa-goes18",
-        "GOES-19": "noaa-goes19",
-    }
+        # GOES default full disk bounds: this is roughly what we fall back to if intersects=None
+        default_geometry = Polygon([(-156, -81), (6, -81), (6, 81), (-156, 81)])
+        geometry_to_use = intersects if intersects is not None else default_geometry
 
-    # Build a set of requested channel IDs for fast lookup
-    requested_channel_ids: set[str] | None = None
-    if query.channels:
-        requested_channel_ids = {ch.c_id for ch in query.channels}
-
-    # Generate hourly prefixes to scan
-    search_start = query.time_range.start.replace(minute=0, second=0, microsecond=0)
-    search_end = query.time_range.end
-
-    # Ensure timezone awareness for comparisons against S3 file metadata
-    q_start = (
-        query.time_range.start.replace(tzinfo=timezone.utc)
-        if query.time_range.start.tzinfo is None
-        else query.time_range.start
-    )
-    q_end = (
-        query.time_range.end.replace(tzinfo=timezone.utc)
-        if query.time_range.end.tzinfo is None
-        else query.time_range.end
-    )
-
-    current_hour = search_start
-    hourly_steps = []
-    while current_hour <= search_end:
-        hourly_steps.append(current_hour)
-        current_hour += timedelta(hours=1)
-
-    for product in query.products:
-        # Only support ABI L1b for now
-        if not product.name.startswith("ABI-L1b-Rad"):
-            continue
-
-        if query.satellites:
-            requested_satellites = query.satellites
-        else:
-            requested_satellites = product.supported_satellites
-
-        for satellite in requested_satellites:
-            bucket = sat_to_bucket.get(satellite.name)
-            if not bucket:
+        for collection in collections:
+            if not collection.startswith("ABI-L1b-Rad"):
                 continue
 
-            for h in hourly_steps:
-                # AWS path: <product>/<year>/<day>/<hour>/
-                prefix = f"{bucket}/{product.name}/{h.year}/{h.strftime('%j')}/{h.strftime('%H')}/"
-                try:
-                    files = fs.ls(prefix, detail=True)
-                    for f_info in files:
-                        f_path = f_info["name"]
-                        if not f_path.endswith(".nc"):
-                            continue
+            for satellite in requested_satellites:
+                bucket = sat_to_bucket.get(satellite)
+                if not bucket:
+                    continue
 
-                        filename = f_path.split("/")[-1]
-                        meta = _parse_goes_filename(filename)
+                for h in hourly_steps:
+                    prefix = f"{bucket}/{collection}/{h.year}/{h.strftime('%j')}/{h.strftime('%H')}/"
+                    try:
+                        files = fs.ls(prefix, detail=True)
+                        for f_info in files:
+                            f_path = f_info["name"]
+                            if not f_path.endswith(".nc"):
+                                continue
 
-                        if not meta:
-                            continue
+                            filename = f_path.split("/")[-1]
+                            meta = _parse_goes_filename(filename)
 
-                        # Filter by exact time range
-                        if meta["start_time"] > q_end or meta["end_time"] < q_start:
-                            continue
+                            if not meta:
+                                continue
 
-                        # Filter by channel if requested
-                        file_channel_id = meta.get("channel_id")
-                        if requested_channel_ids is not None and file_channel_id not in requested_channel_ids:
-                            continue
+                            if meta["start_time"] > q_end or meta["end_time"] < q_start:
+                                continue
 
-                        # Resolve the Channel object for this file
-                        file_channel = None
-                        if file_channel_id:
-                            file_channel = _find_channel_by_id(product.channels, file_channel_id)
-                            if file_channel is None:
-                                logger.warning(
-                                    "Channel ID found in filename but missing from product channels",
-                                    channel_id=file_channel_id,
-                                    product=product.name,
-                                    filename=filename,
-                                )
+                            file_channel_id = meta.get("channel_id")
+                            if requested_channel_ids is not None and file_channel_id not in requested_channel_ids:
+                                continue
 
-                        if not file_channel:
-                            continue
-
-                        base_row = {
-                            "product_id": product.name,
-                            "granule_id": filename,
-                            "start_time": meta["start_time"],
-                            "end_time": meta["end_time"],
-                            "s3_url": f"s3://{f_path}",
-                            "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
-                            "size_mb": f_info["size"] / (1024 * 1024),
-                            "overlap_mode": query.cell_overlap_mode,
-                        }
-
-                        # GOES files don't have per-granule geometry, use spatial_extent directly
-                        if not query.spatial_extent or not query.spatial_extent.grid_cells:
-                            # If no spatial extent requested, we can't really return anything in this grid-exploded schema
-                            # but we might have a default single cell or something?
-                            # For now, if no cells are in extent, skip.
-                            continue
-
-                        # Calculate overlapping grid cells
-                        overlap_fn = lambda cell: (
-                            cell.bounds.intersects(cell.bounds)
-                            if query.cell_overlap_mode == "contains"
-                            else cell.bounds.intersects(cell.bounds)
-                        )
-                        overlapping_cells = [cell for cell in query.spatial_extent.grid_cells if overlap_fn(cell)]
-
-                        if not overlapping_cells:
-                            continue
-
-                        for cell in overlapping_cells:
-                            cell_name = f"{cell.row}_{cell.col}"
-                            raw_id = f"{cell_name}_{file_channel.c_id}_{filename}"
-                            unique_id = hashlib.md5(raw_id.encode("utf-8")).hexdigest()
+                            # Granule level row
+                            unique_id = hashlib.md5(f"{filename}".encode("utf-8")).hexdigest()
 
                             rows.append(
                                 {
-                                    "name": cell_name,
-                                    "row": cell.row,
-                                    "col": cell.col,
-                                    "utm_zone": cell.epsg.split(":")[-1],
-                                    "epsg": cell.epsg,
-                                    "dist": cell.dist,
-                                    "geometry": cell.bounds,
-                                    "cell_bounds": cell.bounds,
-                                    "unique_id": unique_id,
-                                    "channel": file_channel,
-                                    **base_row,
+                                    "id": unique_id,
+                                    "collection": collection,
+                                    "geometry": geometry_to_use,
+                                    "start_time": meta["start_time"],
+                                    "end_time": meta["end_time"],
+                                    "href": f"s3://{f_path}",
+                                    "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
+                                    "size_mb": f_info["size"] / (1024 * 1024),
+                                    "channel_id": file_channel_id,
+                                    "granule_id": filename,
+                                    "satellite": satellite,
                                 }
                             )
 
-                except FileNotFoundError as e:
-                    logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
+                    except FileNotFoundError as e:
+                        logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
 
-    if not rows:
-        gdf = gpd.GeoDataFrame(
-            columns=list(SearchResultSchema.to_schema().columns.keys()),
-            geometry="geometry",
-        )
+        if not rows:
+            return self._empty_result()
+
+        gdf = gpd.GeoDataFrame(rows, geometry="geometry")
         return SearchResultSchema.validate(gdf)
 
-    gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-    return SearchResultSchema.validate(gdf)
+    def _empty_result(self) -> GeoDataFrame["SearchResultSchema"]:
+        columns = list(SearchResultSchema.to_schema().columns.keys())
+        if "geometry" not in columns:
+            columns.append("geometry")
+        gdf = gpd.GeoDataFrame(columns=columns, geometry="geometry")
+        return SearchResultSchema.validate(gdf)

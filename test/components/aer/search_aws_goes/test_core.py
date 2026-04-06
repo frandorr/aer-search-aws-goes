@@ -2,60 +2,37 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import patch
 import geopandas as gpd
-from aer.search import SearchQuery
-from aer.search_aws_goes import search_aws_goes
+
 from aer.temporal import TimeRange
-from aer.spectral import Product, Channel
-from aer.spatial import GridSpatialExtent, GridCell
-from shapely.geometry import Polygon
-
-
-def get_channel(pid, cid):
-    return next(c for c in Product.get(pid).channels if c.c_id == cid)
-
-
-ABI_L1B_RADF_AWS = Product.get("ABI-L1b-RadF")
-ABI_BAND_1 = get_channel("ABI-L1b-RadF", "1")
-ABI_BAND_13 = get_channel("ABI-L1b-RadF", "13")
-
-# Dummy spatial extent for testing
-TEST_CELL = GridCell(
-    row="100U",
-    col="100R",
-    dist=100,
-    bounds=Polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
-    epsg="EPSG:4326",
-)
-DUMMY_SPATIAL_EXTENT = GridSpatialExtent(grid_cells=frozenset([TEST_CELL]))
+from aer.search_aws_goes import AwsGoesSearchPlugin
 
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_empty(mock_s3_cls):
+    plugin = AwsGoesSearchPlugin()
     time_range = TimeRange(
         start=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
     )
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
-    query = SearchQuery(
-        products=[ABI_L1B_RADF_AWS],
+    
+    gdf = plugin.search(
+        collections=["ABI-L1b-RadF"],
+        intersects=None,
         time_range=time_range,
-        spatial_extent=DUMMY_SPATIAL_EXTENT,
-        satellites=(),
-        channels=(),
     )
-    gdf = search_aws_goes(query)
+    
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert gdf.empty
-    assert "product_id" in gdf.columns
-    assert "channel" in gdf.columns
-    assert "unique_id" in gdf.columns
-    assert "name" in gdf.columns
-    assert "overlap_mode" in gdf.columns
+    assert "id" in gdf.columns
+    assert "collection" in gdf.columns
+    assert "href" in gdf.columns
 
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_results(mock_s3_cls):
+    plugin = AwsGoesSearchPlugin()
     time_range = TimeRange(
         start=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
@@ -74,28 +51,26 @@ def test_search_aws_goes_results(mock_s3_cls):
         [{"name": path, "size": 1024 * 1024}] if p == prefix else []
     )
 
-    query = SearchQuery(
-        products=[ABI_L1B_RADF_AWS],
+    gdf = plugin.search(
+        collections=["ABI-L1b-RadF"],
+        intersects=None,
         time_range=time_range,
-        spatial_extent=DUMMY_SPATIAL_EXTENT,
-        satellites=(),
-        channels=(),
     )
-    gdf = search_aws_goes(query)
 
     assert not gdf.empty
     assert len(gdf) == 1
-    assert gdf.iloc[0]["granule_id"] == filename
-    assert gdf.iloc[0]["s3_url"] == f"s3://{path}"
-    assert gdf.iloc[0]["size_mb"] == 1.0
-    assert gdf.iloc[0]["channel"] == ABI_BAND_1
-    assert gdf.iloc[0]["overlap_mode"] == query.cell_overlap_mode
-    assert gdf.iloc[0]["product_id"] == "ABI-L1b-RadF"
+    assert gdf.iloc[0]["collection"] == "ABI-L1b-RadF"
+    assert gdf.iloc[0]["href"] == f"s3://{path}"
+    assert "id" in gdf.columns
+    assert "start_time" in gdf.columns
+    assert "end_time" in gdf.columns
+    assert "geometry" in gdf.columns
 
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_filters_by_channel(mock_s3_cls):
-    """When query.channels is set, only files matching those bands are returned."""
+    """When channels are set via search_params, only files matching those bands are returned."""
+    plugin = AwsGoesSearchPlugin()
     time_range = TimeRange(
         start=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
@@ -114,38 +89,34 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
     # Only request band 13
-    query = SearchQuery(
-        products=[ABI_L1B_RADF_AWS],
+    gdf = plugin.search(
+        collections=["ABI-L1b-RadF"],
+        intersects=None,
         time_range=time_range,
-        channels=(ABI_BAND_13,),
-        spatial_extent=DUMMY_SPATIAL_EXTENT,
-        satellites=(),
+        search_params={"channels": ["13"]},
     )
-    gdf = search_aws_goes(query)
 
     assert len(gdf) == 1
-    assert "C13" in gdf.iloc[0]["granule_id"]
-    assert gdf.iloc[0]["channel"] == ABI_BAND_13
+    assert "C13" in gdf.iloc[0]["href"]
+    assert gdf.iloc[0]["channel_id"] == "13"
 
 
 @pytest.mark.integration
 @pytest.mark.slow
 def test_search_aws_goes_real():
+    plugin = AwsGoesSearchPlugin()
     # Use a real satellite and time that we know has data
     time_range = TimeRange(
         start=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end=datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc),
     )
-    query = SearchQuery(
-        products=[ABI_L1B_RADF_AWS],
+    
+    gdf = plugin.search(
+        collections=["ABI-L1b-RadF"],
+        intersects=None,
         time_range=time_range,
-        spatial_extent=DUMMY_SPATIAL_EXTENT,
-        satellites=(),
-        channels=(),
     )
-    gdf = search_aws_goes(query)
 
     assert not gdf.empty, "Expected to find GOES files on AWS for 2024-001 12:00"
-    assert "s3_url" in gdf.columns
-    assert gdf.iloc[0]["product_id"] == "ABI-L1b-RadF"
-
+    assert "href" in gdf.columns
+    assert gdf.iloc[0]["collection"] == "ABI-L1b-RadF"

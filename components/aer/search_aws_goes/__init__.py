@@ -1,3 +1,3 @@
-from .core import search_aws_goes
+from .core import AwsGoesSearchPlugin
 
-__all__ = ["search_aws_goes"]
+__all__ = ["AwsGoesSearchPlugin"]

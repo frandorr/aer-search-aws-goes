@@ -20,11 +20,14 @@ dependencies = [
 
 
 [project.entry-points."aer.plugins"]
-search_aws_goes = "aer.search_aws_goes.core:search_aws_goes"
+search_aws_goes = "aer.search_aws_goes.core:AwsGoesSearchPlugin"
 
 [tool.uv]
 managed = true
 add-bounds = "major"
+
+[tool.uv.sources]
+aer-core = { path = "../aer/projects/aer-core" }
 
 [tool.uv.workspace]
 members = ["projects/*"]
@@ -55,6 +58,7 @@ extraPaths = ["components/", "bases/"]
 
 [dependency-groups]
 dev = [
+    "marimo[mcp]>=0.21.1,<0.22.0",
     "polylith-cli>=1.43.0,<2.0.0",
     "pytest>=9.0.2,<10.0.0",
     "python-semantic-release>=10.5.3,<11.0.0",
