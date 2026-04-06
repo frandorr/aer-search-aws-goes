@@ -33,7 +33,9 @@ def _parse_goes_filename(filename: str) -> dict[str, Any]:
     end_str = match.group(2)
 
     try:
-        start_time = datetime.strptime(start_str, "%Y%j%H%M%S").replace(tzinfo=timezone.utc)
+        start_time = datetime.strptime(start_str, "%Y%j%H%M%S").replace(
+            tzinfo=timezone.utc
+        )
         end_time = datetime.strptime(end_str, "%Y%j%H%M%S").replace(tzinfo=timezone.utc)
     except ValueError:
         return {}
@@ -56,7 +58,7 @@ class AwsGoesSearchPlugin:
         collections: list[str],
         intersects: GeomLike | None,
         time_range: TimeRange | None,
-        search_params: dict | None = None,
+        search_params: dict | None,
     ) -> GeoDataFrame["SearchResultSchema"]:
         """Search for GOES ABI products on AWS S3.
 
@@ -81,7 +83,15 @@ class AwsGoesSearchPlugin:
 
         requested_channel_ids: set[str] | None = None
         if "channels" in search_params:
-            requested_channel_ids = set(search_params["channels"])
+            requested_channel_ids = set()
+            for ch in search_params["channels"]:
+                ch_str = str(ch).upper()
+                if ch_str.startswith("C"):
+                    ch_str = ch_str[1:]
+                try:
+                    requested_channel_ids.add(str(int(ch_str)))
+                except ValueError:
+                    requested_channel_ids.add(str(ch))
 
         requested_satellites: list[str] | set[str] = list(sat_to_bucket.keys())
         if "satellites" in search_params:
@@ -142,11 +152,16 @@ class AwsGoesSearchPlugin:
                                 continue
 
                             file_channel_id = meta.get("channel_id")
-                            if requested_channel_ids is not None and file_channel_id not in requested_channel_ids:
+                            if (
+                                requested_channel_ids is not None
+                                and file_channel_id not in requested_channel_ids
+                            ):
                                 continue
 
                             # Granule level row
-                            unique_id = hashlib.md5(f"{filename}".encode("utf-8")).hexdigest()
+                            unique_id = hashlib.md5(
+                                f"{filename}".encode("utf-8")
+                            ).hexdigest()
 
                             rows.append(
                                 {
