@@ -4,8 +4,23 @@ from unittest.mock import patch
 import geopandas as gpd
 
 from aer.temporal import TimeRange
-from aer.search_aws_goes import AwsGoesSearchPlugin
+from aer.search_aws_goes.core import AwsGoesSearchPlugin, GOES_EAST_C_POLY, GOES_WEST_F_POLY
+from shapely.geometry import MultiPolygon, Polygon
 
+
+def test_goes_polygon_extraction():
+    # CONUS footprint should not cross the antimeridian, returning a regular Polygon
+    assert isinstance(GOES_EAST_C_POLY, Polygon)
+    assert not GOES_EAST_C_POLY.is_empty
+    
+    # GOES-West Full Disk crosses the antimeridian and must be split into a MultiPolygon
+    assert isinstance(GOES_WEST_F_POLY, MultiPolygon)
+    assert not GOES_WEST_F_POLY.is_empty
+    
+    # Check that GOES-West Full Disk has outer bounds bounded strictly by standard coordinate boundaries
+    bounds = GOES_WEST_F_POLY.bounds
+    assert pytest.approx(bounds[0], abs=0.1) == -180.0
+    assert pytest.approx(bounds[2], abs=0.1) == 180.0
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_empty(mock_s3_cls):
@@ -21,6 +36,7 @@ def test_search_aws_goes_empty(mock_s3_cls):
         collections=["ABI-L1b-RadF"],
         intersects=None,
         time_range=time_range,
+        search_params=None,
     )
     
     assert isinstance(gdf, gpd.GeoDataFrame)
@@ -55,6 +71,7 @@ def test_search_aws_goes_results(mock_s3_cls):
         collections=["ABI-L1b-RadF"],
         intersects=None,
         time_range=time_range,
+        search_params=None,
     )
 
     assert not gdf.empty
@@ -115,6 +132,7 @@ def test_search_aws_goes_real():
         collections=["ABI-L1b-RadF"],
         intersects=None,
         time_range=time_range,
+        search_params=None,
     )
 
     assert not gdf.empty, "Expected to find GOES files on AWS for 2024-001 12:00"
