@@ -35,48 +35,49 @@ def _normalize_polygon(coords: np.ndarray) -> Polygon | MultiPolygon:
     """
     lons = coords[:, 0]
     lats = coords[:, 1]
-    
+
     # Check if crossing antimeridian: large span of longitudes but most concentrated near +/- 180
     if np.max(lons) - np.min(lons) > 300:
         # Wrap negative longitudes to 0-360 range
         unwrapped_lons = np.where(lons < 0, lons + 360, lons)
         poly = Polygon(np.column_stack((unwrapped_lons, lats)))
-        
+
         # Split it at 180
         right_clip = box(180, -90, 360, 90)
         left_clip = box(-180, -90, 180, 90)
-        
+
         poly_right = poly.intersection(right_clip)
         poly_left = poly.intersection(left_clip)
-        
+
         from shapely.affinity import translate
+
         poly_right_shifted = translate(poly_right, xoff=-360)
-        
+
         # Filter out empty geometries
         geoms = []
         if not poly_left.is_empty:
             geoms.append(poly_left)
         if not poly_right_shifted.is_empty:
-            if poly_right_shifted.geom_type == 'MultiPolygon':
+            if poly_right_shifted.geom_type == "MultiPolygon":
                 geoms.extend(poly_right_shifted.geoms)
             else:
                 geoms.append(poly_right_shifted)
-                
+
         if len(geoms) > 1:
             return MultiPolygon(geoms)
         elif len(geoms) == 1:
             return geoms[0]
-            
+
     return Polygon(coords)
 
 
 def _get_poly_from_area(area_def: AreaDefinition, frequency: int | None = None) -> Polygon | MultiPolygon:
     from pyproj import Transformer
-    
+
     transformer = Transformer.from_crs(area_def.crs, "EPSG:4326", always_xy=True)
-    
+
     n = frequency * 20 if frequency else 200
-    
+
     x_min, y_min, x_max, y_max = area_def.area_extent
     xs_top = np.linspace(x_min, x_max, n)
     ys_top = np.full(n, y_max)
@@ -86,23 +87,23 @@ def _get_poly_from_area(area_def: AreaDefinition, frequency: int | None = None) 
     ys_bottom = np.full(n, y_min)
     xs_left = np.full(n, x_min)
     ys_left = np.linspace(y_min, y_max, n)
-    
+
     x_proj = np.concatenate([xs_top, xs_right, xs_bottom, xs_left])
     y_proj = np.concatenate([ys_top, ys_right, ys_bottom, ys_left])
-    
+
     lons, lats = transformer.transform(x_proj, y_proj)
-    
+
     mask = np.isfinite(lons) & np.isfinite(lats)
     mask &= (lons <= 180) & (lons >= -180) & (lats <= 90) & (lats >= -90)
-    
+
     valid_lons = lons[mask]
     valid_lats = lats[mask]
-    
+
     # For CONUS/Mesoscale, the edges are within Earth bounds, so valid_lons > 10.
     if len(valid_lons) > 10:
         coords = np.column_stack((valid_lons, valid_lats))
         return _normalize_polygon(coords)
-        
+
     # For Full Disk, boundaries lie out of scope, fallback to Pyresample geostationary edge tracing.
     contour = area_def.boundary(frequency=frequency if frequency else 50).contour()
     coords = np.column_stack((contour[0], contour[1]))
@@ -275,13 +276,16 @@ def _normalize_product_name(collection: str) -> str:
 
 
 class AwsGoesSearchPlugin:
+    plugin_type = "search"
+    supported_collections = SUPPORTED_PRODUCTS
+
     @hookimpl
     def search(
         self,
         collections: list[str],
         intersects: GeomLike | None,
         time_range: TimeRange | None,
-        search_params: dict[str, Any] | None,
+        search_params: dict[str, Any] | None = None,
     ) -> GeoDataFrame["SearchResultSchema"]:
         """Search for GOES ABI products on AWS S3.
 
@@ -328,6 +332,9 @@ class AwsGoesSearchPlugin:
         requested_satellites: list[str] | set[str] = list(sat_to_bucket.keys())
         if "satellites" in search_params:
             requested_satellites = set(search_params["satellites"])
+        elif "satellite" in search_params:
+            sat = search_params["satellite"].upper()
+            requested_satellites = {sat}
 
         if not time_range:
             return self._empty_result()
@@ -336,7 +343,11 @@ class AwsGoesSearchPlugin:
         search_end = time_range.end
 
         q_start = time_range.start
+        if q_start.tzinfo is None:
+            q_start = q_start.replace(tzinfo=timezone.utc)
         q_end = time_range.end
+        if q_end.tzinfo is None:
+            q_end = q_end.replace(tzinfo=timezone.utc)
 
         current_hour = search_start
         hourly_steps = []
