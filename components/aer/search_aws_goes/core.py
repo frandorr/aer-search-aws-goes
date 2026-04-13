@@ -9,7 +9,6 @@ import geopandas as gpd
 import numpy as np
 import s3fs
 from aer.plugin.core import SearchResultSchema, hookimpl
-from aer.spatial import GeomLike
 from aer.temporal import TimeRange
 from pandera.typing.geopandas import GeoDataFrame
 from pyresample import (
@@ -117,7 +116,7 @@ GOES_WEST_F_POLY = _get_poly_from_area(load_area(str(AREAS_FILE), "goes_west_abi
 GOES_WEST_C_POLY = _get_poly_from_area(load_area(str(AREAS_FILE), "goes_west_abi_p_2km"))
 
 
-def _get_geometry(satellite: str, domain: str) -> GeomLike | None:
+def _get_geometry(satellite: str, domain: str) -> Polygon | MultiPolygon | None:
     lower_satellite = satellite.lower()
     if lower_satellite == "goes-16" or lower_satellite == "goes-19":  # GOES-East
         if domain == "F":
@@ -283,8 +282,8 @@ class AwsGoesSearchPlugin:
     def search(
         self,
         collections: list[str],
-        intersects: GeomLike | None,
-        time_range: TimeRange | None,
+        intersects: Polygon | MultiPolygon | None = None,
+        time_range: TimeRange | None = None,
         search_params: dict[str, Any] | None = None,
     ) -> GeoDataFrame["SearchResultSchema"]:
         """Search for GOES ABI products on AWS S3.
