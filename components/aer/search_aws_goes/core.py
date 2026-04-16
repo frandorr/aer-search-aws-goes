@@ -1,21 +1,20 @@
 import hashlib
-import json
 import re
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast, override
 
 import geopandas as gpd
 import numpy as np
 import s3fs
-from aer.interfaces.core import SearchProvider
+from aer.interfaces import SearchProvider
 from aer.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
-from pyresample import (
-    AreaDefinition,
-    load_area,  # Assuming you are using pyresample  # Assuming you are using pyresample
-)
+from pyresample import load_area
+from pyresample.geometry import AreaDefinition
 from shapely.geometry import MultiPolygon, Polygon, box
+from shapely.geometry.base import BaseGeometry
 from structlog import get_logger
 
 logger = get_logger()
@@ -104,7 +103,7 @@ def _get_poly_from_area(area_def: AreaDefinition, frequency: int | None = None) 
         return _normalize_polygon(coords)
 
     # For Full Disk, boundaries lie out of scope, fallback to Pyresample geostationary edge tracing.
-    contour = area_def.boundary(frequency=frequency if frequency else 50).contour()
+    contour = area_def.boundary(vertices_per_side=frequency if frequency else 50).contour()
     coords = np.column_stack((contour[0], contour[1]))
     return _normalize_polygon(coords)
 
@@ -275,15 +274,16 @@ def _normalize_product_name(collection: str) -> str:
 
 
 class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
-    supported_collections = SUPPORTED_PRODUCTS
+    supported_collections: Sequence[str] = SUPPORTED_PRODUCTS
 
+    @override
     def search(
         self,
-        collections: list[str],
-        intersects: Polygon | MultiPolygon | None = None,
+        collections: Sequence[str],
+        intersects: BaseGeometry | None = None,
         start_datetime: datetime | None = None,
         end_datetime: datetime | None = None,
-        search_params: dict[str, Any] | None = None,
+        search_params: Mapping[str, Any] | None = None,
     ) -> GeoDataFrame[AssetSchema]:
         """Search for GOES ABI products on AWS S3.
 
@@ -410,11 +410,11 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
             return self._empty_result()
 
         gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-        return AssetSchema.validate(gdf)
+        return cast(GeoDataFrame, AssetSchema.validate(gdf))
 
     def _empty_result(self) -> GeoDataFrame[AssetSchema]:
         columns = list(AssetSchema.to_schema().columns.keys())
         if "geometry" not in columns:
             columns.append("geometry")
         gdf = gpd.GeoDataFrame(columns=columns, geometry="geometry")
-        return AssetSchema.validate(gdf)
+        return cast(GeoDataFrame, AssetSchema.validate(gdf))
