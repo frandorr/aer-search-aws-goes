@@ -8,8 +8,8 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import s3fs
-from aer.plugin.core import SearchResultSchema, hookimpl
-from aer.temporal import TimeRange
+from aer.interfaces.core import SearchProvider
+from aer.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from pyresample import (
     AreaDefinition,
@@ -274,18 +274,17 @@ def _normalize_product_name(collection: str) -> str:
     raise ValueError(f"Collection name '{collection}' does not match any supported GOES product.")
 
 
-class AwsGoesSearchPlugin:
-    plugin_type = "search"
+class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
     supported_collections = SUPPORTED_PRODUCTS
 
-    @hookimpl
     def search(
         self,
         collections: list[str],
         intersects: Polygon | MultiPolygon | None = None,
-        time_range: TimeRange | None = None,
+        start_datetime: datetime | None = None,
+        end_datetime: datetime | None = None,
         search_params: dict[str, Any] | None = None,
-    ) -> GeoDataFrame["SearchResultSchema"]:
+    ) -> GeoDataFrame[AssetSchema]:
         """Search for GOES ABI products on AWS S3.
 
         This plugin traverses the NOAA GOES S3 buckets (noaa-goes16, noaa-goes17, etc.)
@@ -335,16 +334,16 @@ class AwsGoesSearchPlugin:
             sat = search_params["satellite"].upper()
             requested_satellites = {sat}
 
-        if not time_range:
+        if not start_datetime or not end_datetime:
             return self._empty_result()
 
-        search_start = time_range.start.replace(minute=0, second=0, microsecond=0)
-        search_end = time_range.end
+        search_start = start_datetime.replace(minute=0, second=0, microsecond=0)
+        search_end = end_datetime
 
-        q_start = time_range.start
+        q_start = start_datetime
         if q_start.tzinfo is None:
             q_start = q_start.replace(tzinfo=timezone.utc)
-        q_end = time_range.end
+        q_end = end_datetime
         if q_end.tzinfo is None:
             q_end = q_end.replace(tzinfo=timezone.utc)
 
@@ -411,11 +410,11 @@ class AwsGoesSearchPlugin:
             return self._empty_result()
 
         gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-        return SearchResultSchema.validate(gdf)
+        return AssetSchema.validate(gdf)
 
-    def _empty_result(self) -> GeoDataFrame["SearchResultSchema"]:
-        columns = list(SearchResultSchema.to_schema().columns.keys())
+    def _empty_result(self) -> GeoDataFrame[AssetSchema]:
+        columns = list(AssetSchema.to_schema().columns.keys())
         if "geometry" not in columns:
             columns.append("geometry")
         gdf = gpd.GeoDataFrame(columns=columns, geometry="geometry")
-        return SearchResultSchema.validate(gdf)
+        return AssetSchema.validate(gdf)
