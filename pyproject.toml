@@ -19,10 +19,6 @@ dependencies = [
     "s3fs>=2026.2.0,<2027.0.0",
 ]
 
-
-[project.entry-points."aer.plugins"]
-search_aws_goes = "aer.search_aws_goes.core:AwsGoesSearchPlugin"
-
 [tool.uv]
 managed = true
 add-bounds = "major"
@@ -73,4 +69,3 @@ markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
-
