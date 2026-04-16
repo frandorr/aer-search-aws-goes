@@ -13,6 +13,7 @@ authors = [{ name = "Fran Dorr" }]
 dependencies = [
     "aer-core",
     "geopandas>=1.1.2,<2.0.0",
+    "majortom-eg>=1.0.0,<2.0.0",
     "pandera[geopandas]>=0.24.0,<0.25.0",
     "pyarrow>=23.0.1,<24.0.0",
     "s3fs>=2026.2.0,<2027.0.0",
