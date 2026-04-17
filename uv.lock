@@ -18,7 +18,7 @@ members = [
 
 [[package]]
 name = "aer-core"
-version = "3.4.0"
+version = "3.5.0"
 source = { editable = "../aer/projects/aer-core" }
 dependencies = [
     { name = "attrs" },
@@ -51,7 +51,7 @@ requires-dist = [
 
 [[package]]
 name = "aer-search-aws-goes"
-version = "2.3.0"
+version = "2.4.0"
 source = { editable = "projects/aer-search-aws-goes" }
 dependencies = [
     { name = "aer-core" },
