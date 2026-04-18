@@ -222,11 +222,13 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
                             domain = _parse_domain(collection)
                             geometry = _get_geometry(satellite, domain)
                             # Granule level row
-                            unique_id = hashlib.md5(f"{filename}".encode("utf-8")).hexdigest()
+                            # from pathlib import Path
+
+                            granule_id = Path(filename).stem
 
                             rows.append(
                                 {
-                                    "id": unique_id,
+                                    "id": granule_id,
                                     "collection": collection,
                                     "geometry": geometry,
                                     "start_time": meta["start_time"],
@@ -235,7 +237,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
                                     "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
                                     "size_mb": f_info["size"] / (1024 * 1024),
                                     "channel_id": file_channel_id,
-                                    "granule_id": filename,
+                                    "granule_id": granule_id,
                                     "satellite": satellite,
                                     "domain": domain,
                                 }

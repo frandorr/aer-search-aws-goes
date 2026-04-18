@@ -5,23 +5,20 @@ build-backend = "hatchling.build"
 [project]
 name = "aer-search-aws-goes-workspace"
 version = "1.1.0"
-description = "A template code repo for aer plugins"
+description = "A plugin repository for the AWS GOES aer search component"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
     "aer-core",
-    "geopandas>=1.1.2,<2.0.0",
-    "majortom-eg>=1.0.0,<2.0.0",
-    "pandera[geopandas]>=0.24.0,<0.25.0",
-    "pyarrow>=23.0.1,<24.0.0",
-    "s3fs>=2026.2.0,<2027.0.0",
+    "geopandas>=1.1.2",
+    "pandera[geopandas]>=0.24.0",
+    "s3fs>=2026.2.0",
 ]
 
 [tool.uv]
 managed = true
-add-bounds = "major"
 
 [tool.uv.sources]
 aer-core = { path = "../aer/projects/aer-core", editable = true }
@@ -40,7 +37,6 @@ exclude = [
     ".git",
     ".github",
     "__pycache__",
-    ".mypy_cache",
     ".ruff_cache",
     "dist",
     ".venv",
@@ -55,6 +51,7 @@ extraPaths = ["components/", "bases/"]
 
 [dependency-groups]
 dev = [
+    "majortom-eg>=1.0.0,<2.0.0",
     "marimo[mcp]>=0.21.1,<0.22.0",
     "polylith-cli>=1.43.0,<2.0.0",
     "pytest>=9.0.2,<10.0.0",
