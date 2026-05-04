@@ -12,7 +12,7 @@ from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
 from structlog import get_logger
 
-from .utils import GOES_EAST_C_POLY, GOES_WEST_F_POLY, _get_geometry, _parse_domain, _parse_goes_filename
+from .utils import _get_geometry, _parse_domain, _parse_goes_filename
 
 logger = get_logger()
 
@@ -216,7 +216,10 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
                                 continue
 
                             file_channel_id = meta.get("channel_id")
-                            if requested_channel_ids is not None and file_channel_id not in requested_channel_ids:
+                            if (
+                                requested_channel_ids is not None
+                                and file_channel_id not in requested_channel_ids
+                            ):
                                 continue
 
                             domain = _parse_domain(collection)
