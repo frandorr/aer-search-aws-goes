@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aer-search-aws-goes-workspace"
-version = "1.1.0"
+version = "1.0.0"
 description = "A plugin repository for the AWS GOES aer search component"
 readme = "README.md"
 requires-python = ">=3.13"
