@@ -11,7 +11,7 @@ requires-python = ">=3.13"
 license = "MIT"
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
-    "aer-core",
+    "aer-eo",
     "geopandas>=1.1.2",
     "pandera[geopandas]>=0.24.0",
     "s3fs>=2026.2.0",
@@ -21,7 +21,7 @@ dependencies = [
 managed = true
 
 [tool.uv.sources]
-aer-core = { path = "../aer/projects/aer-core", editable = true }
+aer-eo = { path = "../aer/projects/aer-core", editable = true }
 
 [tool.uv.workspace]
 members = ["projects/*"]
