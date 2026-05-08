@@ -6,7 +6,7 @@ from typing import Any, cast, override
 
 import geopandas as gpd
 import s3fs
-from aer.interfaces import SearchProvider
+from aer.interfaces import AerProfile, SearchProvider
 from aer.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
@@ -116,7 +116,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
     @override
     def search(
         self,
-        collections: Sequence[str],
+        profiles: Sequence[AerProfile],
         intersects: BaseGeometry | None = None,
         start_datetime: datetime | None = None,
         end_datetime: datetime | None = None,
@@ -127,14 +127,18 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         This plugin traverses the NOAA GOES S3 buckets (noaa-goes16, noaa-goes17, etc.)
         by year/day/hour based on the requested time range.
 
-        When channel filters are provided via search_params["channels"],
-        only files matching those bands are returned.
+        Collections, channels, and satellite are read from the provided ``profiles``.
+        Domain-specific config should live on each :class:`AerProfile`;
+        ``search_params`` is reserved for meta-level parameters (credentials, timeouts, etc.).
         """
+        if not profiles:
+            return self._empty_result()
+
         # Collections are already mapped to supported_collections case by AerClient
         # Validate against SUPPORTED_PRODUCTS directly
         normalized_collections = []
         supported_set = set(SUPPORTED_PRODUCTS)
-        for col in collections:
+        for col in (c for p in profiles for c in p.collections):
             if col in supported_set:
                 normalized_collections.append(col)
             else:
@@ -154,23 +158,26 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         }
 
         requested_channel_ids: set[str] | None = None
-        if "channels" in search_params:
-            requested_channel_ids = set()
-            for ch in search_params["channels"]:
-                ch_str = str(ch).upper()
-                if ch_str.startswith("C"):
-                    ch_str = ch_str[1:]
-                try:
-                    requested_channel_ids.add(str(int(ch_str)))
-                except ValueError:
-                    requested_channel_ids.add(str(ch))
+        profile_channels: set[str] = set()
+        for p in profiles:
+            if p.channels:
+                for ch in p.channels:
+                    ch_str = str(ch).upper()
+                    if ch_str.startswith("C"):
+                        ch_str = ch_str[1:]
+                    try:
+                        profile_channels.add(str(int(ch_str)))
+                    except ValueError:
+                        profile_channels.add(str(ch))
+        if profile_channels:
+            requested_channel_ids = profile_channels
 
-        requested_satellites: list[str] | set[str] = list(sat_to_bucket.keys())
-        if "satellites" in search_params:
-            requested_satellites = set(search_params["satellites"])
-        elif "satellite" in search_params:
-            sat = search_params["satellite"].upper()
-            requested_satellites = {sat}
+        requested_satellites: set[str] = set()
+        for p in profiles:
+            if p.satellite:
+                requested_satellites.add(p.satellite.upper())
+        if not requested_satellites:
+            requested_satellites = set(sat_to_bucket.keys())
 
         if not start_datetime or not end_datetime:
             return self._empty_result()

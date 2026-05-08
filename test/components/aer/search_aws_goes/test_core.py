@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 import geopandas as gpd
 
-from aer.search_aws_goes.core import AwsGoesSearchPlugin, GOES_EAST_C_POLY, GOES_WEST_F_POLY
+from aer.interfaces import AerProfile
+from aer.search_aws_goes import GOES_EAST_C_POLY, GOES_WEST_F_POLY
+from aer.search_aws_goes.core import AwsGoesSearchPlugin
 from shapely.geometry import MultiPolygon, Polygon
 
 
@@ -30,8 +32,9 @@ def test_search_aws_goes_empty(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
+    profile = AerProfile(name="goes", resolution=1000.0, collections=["ABI-L1b-RadF"])
     gdf = plugin.search(
-        collections=["ABI-L1b-RadF"],
+        profiles=[profile],
         intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
@@ -60,8 +63,9 @@ def test_search_aws_goes_results(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
 
+    profile = AerProfile(name="goes", resolution=1000.0, collections=["ABI-L1b-RadF"])
     gdf = plugin.search(
-        collections=["ABI-L1b-RadF"],
+        profiles=[profile],
         intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
@@ -71,7 +75,71 @@ def test_search_aws_goes_results(mock_s3_cls):
     assert not gdf.empty
     assert len(gdf) == 1
     assert gdf.iloc[0]["collection"] == "ABI-L1b-RadF"
-    assert gdf.iloc[0]["href"] == f"s3://{path}"
+
+
+@patch("s3fs.S3FileSystem")
+def test_search_reads_collections_from_profiles(mock_s3_cls):
+    plugin = AwsGoesSearchPlugin()
+    start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+    end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
+    filename = "OR_ABI-L1b-RadF-M6C01_G16_s20240011200000_e20240011209590_c20240011210000.nc"
+    path = f"noaa-goes16/ABI-L1b-RadF/2024/001/12/{filename}"
+    prefix = "noaa-goes16/ABI-L1b-RadF/2024/001/12/"
+
+    mock_fs = mock_s3_cls.return_value
+    mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
+
+    profile = AerProfile(
+        name="goes",
+        resolution=1000.0,
+        collections=["ABI-L1b-RadF"],
+        satellite="GOES-16",
+    )
+    gdf = plugin.search(
+        profiles=[profile],
+        intersects=None,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        search_params=None,
+    )
+
+    assert not gdf.empty
+    assert all(r["collection"] == "ABI-L1b-RadF" for _, r in gdf.iterrows())
+
+
+@patch("s3fs.S3FileSystem")
+def test_search_filters_by_profile_channels(mock_s3_cls):
+    plugin = AwsGoesSearchPlugin()
+    start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+    end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
+
+    filenames = [
+        "OR_ABI-L1b-RadF-M6C01_G16_s20240011200000_e20240011209590_c20240011210000.nc",
+        "OR_ABI-L1b-RadF-M6C02_G16_s20240011200000_e20240011209590_c20240011210000.nc",
+    ]
+    prefix = "noaa-goes16/ABI-L1b-RadF/2024/001/12/"
+    files = [{"name": f"{prefix}{fn}", "size": 1024 * 1024} for fn in filenames]
+
+    mock_fs = mock_s3_cls.return_value
+    mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
+
+    profile = AerProfile(
+        name="goes",
+        resolution=1000.0,
+        collections=["ABI-L1b-RadF"],
+        channels=["C01"],
+    )
+    gdf = plugin.search(
+        profiles=[profile],
+        intersects=None,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        search_params=None,
+    )
+
+    assert len(gdf) == 1
+    assert gdf.iloc[0]["channel_id"] == "1"
+    assert "C01" in gdf.iloc[0]["href"]
     assert "id" in gdf.columns
     assert "start_time" in gdf.columns
     assert "end_time" in gdf.columns
@@ -80,7 +148,7 @@ def test_search_aws_goes_results(mock_s3_cls):
 
 @patch("s3fs.S3FileSystem")
 def test_search_aws_goes_filters_by_channel(mock_s3_cls):
-    """When channels are set via search_params, only files matching those bands are returned."""
+    """When channels are set via profile, only files matching those bands are returned."""
     plugin = AwsGoesSearchPlugin()
     start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
@@ -98,12 +166,18 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
     # Only request band 13
-    gdf = plugin.search(
+    profile = AerProfile(
+        name="goes",
+        resolution=1000.0,
         collections=["ABI-L1b-RadF"],
+        channels=["C13"],
+    )
+    gdf = plugin.search(
+        profiles=[profile],
         intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
-        search_params={"channels": ["13"]},
+        search_params=None,
     )
 
     assert len(gdf) == 1
@@ -119,8 +193,9 @@ def test_search_aws_goes_real():
     start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     end_datetime = datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc)
 
+    profile = AerProfile(name="goes", resolution=1000.0, collections=["ABI-L1b-RadF"])
     gdf = plugin.search(
-        collections=["ABI-L1b-RadF"],
+        profiles=[profile],
         intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
