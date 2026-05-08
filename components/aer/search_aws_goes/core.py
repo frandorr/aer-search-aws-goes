@@ -147,7 +147,10 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         if search_params is None:
             search_params = {}
 
-        fs = s3fs.S3FileSystem(anon=True)
+        fs_kwargs = dict(search_params)
+        if "anon" not in fs_kwargs:
+            fs_kwargs["anon"] = True
+        fs = s3fs.S3FileSystem(**fs_kwargs)
         rows: list[dict[str, Any]] = []
 
         sat_to_bucket = {

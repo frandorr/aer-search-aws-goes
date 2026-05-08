@@ -185,6 +185,62 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
     assert gdf.iloc[0]["channel_id"] == "13"
 
 
+@patch("s3fs.S3FileSystem")
+def test_search_params_flow_through_to_s3fs(mock_s3_cls):
+    """search_params kwarg should be forwarded to s3fs.S3FileSystem."""
+    plugin = AwsGoesSearchPlugin()
+    start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+    end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
+    mock_fs = mock_s3_cls.return_value
+    mock_fs.ls.return_value = []
+
+    profile = AerProfile(
+        name="goes",
+        resolution=1000.0,
+        collections=["ABI-L1b-RadF"],
+        search_params={"requester_pays": True},
+    )
+    # Simulate what AerClient.search() does: merge profile.search_params
+    # over batch search_params and pass the merged dict as search_params.
+    gdf = plugin.search(
+        profiles=[profile],
+        intersects=None,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        search_params={"requester_pays": True},
+    )
+
+    assert isinstance(gdf, gpd.GeoDataFrame)
+    kwargs = mock_s3_cls.call_args.kwargs
+    assert kwargs["anon"] is True
+    assert kwargs["requester_pays"] is True
+
+
+@patch("s3fs.S3FileSystem")
+def test_search_params_can_override_anon(mock_s3_cls):
+    """search_params should be able to override the default anon=True."""
+    plugin = AwsGoesSearchPlugin()
+    start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
+    end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
+    mock_fs = mock_s3_cls.return_value
+    mock_fs.ls.return_value = []
+
+    profile = AerProfile(name="goes", resolution=1000.0, collections=["ABI-L1b-RadF"])
+    gdf = plugin.search(
+        profiles=[profile],
+        intersects=None,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        search_params={"anon": False, "key": "abc", "secret": "xyz"},
+    )
+
+    assert isinstance(gdf, gpd.GeoDataFrame)
+    kwargs = mock_s3_cls.call_args.kwargs
+    assert kwargs["anon"] is False
+    assert kwargs["key"] == "abc"
+    assert kwargs["secret"] == "xyz"
+
+
 @pytest.mark.integration
 @pytest.mark.slow
 def test_search_aws_goes_real():
