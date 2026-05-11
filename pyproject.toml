@@ -7,8 +7,18 @@ name = "aer-search-aws-goes-workspace"
 version = "1.0.0"
 description = "A plugin repository for the AWS GOES aer search component"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 license = "Apache-2.0"
+keywords = ["satellite", "remote-sensing", "earth-observation", "aer", "plugin"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
     "aer-eo",
@@ -16,6 +26,12 @@ dependencies = [
     "pandera[geopandas]>=0.24.0",
     "s3fs>=2026.2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/frandorr/aer-search-aws-goes"
+Repository = "https://github.com/frandorr/aer-search-aws-goes"
+Issues = "https://github.com/frandorr/aer-search-aws-goes/issues"
+Documentation = "https://frandorr.github.io/aer-search-aws-goes"
 
 [tool.uv]
 managed = true
