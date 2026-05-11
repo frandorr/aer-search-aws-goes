@@ -20,6 +20,42 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 
 ---
 
+## 📖 Usage Example
+
+```python
+from datetime import datetime, timezone
+from shapely.geometry import box
+from aer.client import AerClient
+from aer.interfaces import AerProfile
+
+# Define an AOI over the continental US
+aoi = box(-105, 25, -85, 45)
+
+# Create a profile that uses the AWS GOES search plugin
+profile = AerProfile(
+    name="goes_rad_c01",
+    resolution=1000,
+    collections=["ABI-L1b-RadC"],
+    channels=["C01"],
+    satellite="GOES-16",
+    plugin_hints={"search": "search_aws_goes"},
+)
+
+# Search for GOES data
+client = AerClient()
+results = client.search(
+    profiles=[profile],
+    intersects=aoi,
+    start_datetime=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
+    end_datetime=datetime(2025, 6, 1, 13, 0, tzinfo=timezone.utc),
+)
+
+print(f"Found {len(results)} granules")
+print(results[["collection", "start_time", "s3_url"]].head())
+```
+
+---
+
 ## 🏗️ Architecture
 
 This repository follows the **Polylith** workspace structure:
