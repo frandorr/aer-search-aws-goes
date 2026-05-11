@@ -74,4 +74,4 @@ The CI/CD pipeline in `.github/workflows/release.yml` will automatically build a
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
