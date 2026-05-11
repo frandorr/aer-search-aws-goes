@@ -140,8 +140,9 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
 
         Args:
             profiles: Sequence of :class:`AerProfile` objects defining what
-                to search for.  Collections, channels, and satellite are read
-                from each profile.
+                to search for.  Collections are read from each profile; channels
+                are derived from ``profile.collections.values()``, and satellite
+                from ``profile.search_params.get("satellite")``.
             intersects: Optional geometry to spatially filter results.
                 Currently unused because GOES domain geometry is derived from
                 the product name.
@@ -190,8 +191,8 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         requested_channel_ids: set[str] | None = None
         profile_channels: set[str] = set()
         for p in profiles:
-            if p.channels:
-                for ch in p.channels:
+            for vars_ in p.collections.values():
+                for ch in vars_:
                     ch_str = str(ch).upper()
                     if ch_str.startswith("C"):
                         ch_str = ch_str[1:]
@@ -204,8 +205,9 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
 
         requested_satellites: set[str] = set()
         for p in profiles:
-            if p.satellite:
-                requested_satellites.add(p.satellite.upper())
+            sat = p.search_params.get("satellite")
+            if sat:
+                requested_satellites.add(str(sat).upper())
         if not requested_satellites:
             requested_satellites = set(sat_to_bucket.keys())
 

@@ -19,9 +19,8 @@ def main():
     profile = AerProfile(
         name="goes_rad_c01",
         resolution=1000,
-        collections=["ABI-L1b-RadC"],
-        channels=["C01"],
-        satellite="GOES-16",
+        collections={"ABI-L1b-RadC": ["C01"]},
+        search_params={"satellite": "GOES-16"},
         plugin_hints={"search": "search_aws_goes"},
     )
 
