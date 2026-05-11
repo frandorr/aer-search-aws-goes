@@ -111,6 +111,17 @@ SUPPORTED_PRODUCTS = [
 
 
 class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
+    """Search provider for NOAA GOES-R ABI products on AWS S3.
+
+    This plugin traverses the public NOAA GOES S3 buckets
+    (``noaa-goes16``, ``noaa-goes17``, ``noaa-goes18``, ``noaa-goes19``)
+    by year/day/hour prefix and returns matching NetCDF assets as a
+    validated GeoDataFrame.
+
+    Supported collections include all ABI L1b/L2 products listed in
+    :data:`SUPPORTED_PRODUCTS` (e.g. ``ABI-L1b-RadC``, ``ABI-L2-CMIPF``).
+    """
+
     supported_collections: Sequence[str] = SUPPORTED_PRODUCTS
 
     @override
@@ -124,12 +135,28 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
     ) -> GeoDataFrame[AssetSchema]:
         """Search for GOES ABI products on AWS S3.
 
-        This plugin traverses the NOAA GOES S3 buckets (noaa-goes16, noaa-goes17, etc.)
-        by year/day/hour based on the requested time range.
+        This plugin traverses the NOAA GOES S3 buckets by year/day/hour
+        based on the requested time range.
 
-        Collections, channels, and satellite are read from the provided ``profiles``.
-        Domain-specific config should live on each :class:`AerProfile`;
-        ``search_params`` is reserved for meta-level parameters (credentials, timeouts, etc.).
+        Args:
+            profiles: Sequence of :class:`AerProfile` objects defining what
+                to search for.  Collections, channels, and satellite are read
+                from each profile.
+            intersects: Optional geometry to spatially filter results.
+                Currently unused because GOES domain geometry is derived from
+                the product name.
+            start_datetime: Inclusive start of the temporal query range.
+            end_datetime: Inclusive end of the temporal query range.
+            search_params: Meta-level parameters forwarded to ``s3fs.S3FileSystem``
+                (e.g. ``anon``, ``key``, ``secret``).  Domain-specific config lives
+                on each :class:`AerProfile`.
+
+        Returns:
+            A GeoDataFrame where each row represents a matched GOES granule
+            with columns defined by :class:`aer.schemas.AssetSchema`.
+
+        Raises:
+            ValueError: If no matching granules are found.
         """
         if not profiles:
             return self._empty_result()
