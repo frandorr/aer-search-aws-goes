@@ -176,6 +176,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
             search_params = {}
 
         fs_kwargs = dict(search_params)
+        fs_kwargs.pop("satellite", None)
         if "anon" not in fs_kwargs:
             fs_kwargs["anon"] = True
         fs = s3fs.S3FileSystem(**fs_kwargs)
