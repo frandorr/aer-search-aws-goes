@@ -189,6 +189,8 @@ docs/.obsidian/plugins/
 docs/.obsidian/graph.json
 
 *.bak
+*.pyc
+
 # AER public-release hygiene
 .venv/
 .mypy_cache/
