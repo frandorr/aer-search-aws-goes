@@ -71,6 +71,7 @@ dev = [
     "marimo[mcp]>=0.21.1,<0.22.0",
     "polylith-cli>=1.43.0,<2.0.0",
     "pytest>=9.0.2,<10.0.0",
+    "pytest-cov>=6",
     "python-semantic-release>=10.5.3,<11.0.0",
 ]
 
@@ -82,3 +83,26 @@ markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
+[tool.coverage]
+run.branch = true
+run.source = [ "components" ]
+run.omit = [
+  "*/test*",
+  "*/__pycache__/*",
+  "*/.venv/*",
+  "*/site/*",
+  "*/dist/*",
+  "*/build/*",
+  "*/development/*",
+]
+report.show_missing = true
+report.skip_covered = false
+report.fail_under = 0
+report.exclude_also = [
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+html.directory = "htmlcov"
