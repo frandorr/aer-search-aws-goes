@@ -1,4 +1,4 @@
-# aer-search-aws-goes
+# aereo-search-aws-goes
 
 A Polylith plugin for the `aer` framework to search AWS GOES data.
 
@@ -9,7 +9,7 @@ This plugin provides the `search_aws_goes` capability to the `aer` ecosystem, al
 ## Installation
 
 ```bash
-pip install aer-search-aws-goes
+pip install aereo-search-aws-goes
 ```
 
 ## Usage

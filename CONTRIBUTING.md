@@ -1,4 +1,4 @@
-# Contributing to aer-search-aws-goes
+# Contributing to aereo-search-aws-goes
 
 Thank you for your interest in contributing!
 
@@ -16,8 +16,8 @@ Please refer to the [AER core CONTRIBUTING.md](https://github.com/<org>/aer/blob
 ### Setup
 
 ```bash
-git clone https://github.com/<org>/aer-search-aws-goes.git
-cd aer-search-aws-goes
+git clone https://github.com/<org>/aereo-search-aws-goes.git
+cd aereo-search-aws-goes
 uv sync --all-extras
 ```
 
@@ -32,6 +32,6 @@ This plugin requires `aer` core for some tests. If you are developing alongside 
 
 ### Plugin Structure
 
-- `components/aer/search_aws_goes/` — plugin implementation
-- `projects/aer-search-aws-goes/` — publishable package metadata
-- `test/components/aer/search_aws_goes/` — unit tests
+- `components/aereo/search_aws_goes/` — plugin implementation
+- `projects/aereo-search-aws-goes/` — publishable package metadata
+- `test/components/aereo/search_aws_goes/` — unit tests

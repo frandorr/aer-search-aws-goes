@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 import geopandas as gpd
 
-from aer.interfaces import AerProfile
-from aer.search_aws_goes import GOES_EAST_C_POLY, GOES_WEST_F_POLY
-from aer.search_aws_goes.core import AwsGoesSearchPlugin
+from aereo.interfaces import AerProfile
+from aereo.search_aws_goes import GOES_EAST_C_POLY, GOES_WEST_F_POLY
+from aereo.search_aws_goes.core import AwsGoesSearchPlugin
 from shapely.geometry import MultiPolygon, Polygon
 
 

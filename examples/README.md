@@ -1,6 +1,6 @@
-# Examples — aer-search-aws-goes
+# Examples — aereo-search-aws-goes
 
-This directory contains runnable examples demonstrating how to use the `aer-search-aws-goes` plugin.
+This directory contains runnable examples demonstrating how to use the `aereo-search-aws-goes` plugin.
 
 ## Prerequisites
 

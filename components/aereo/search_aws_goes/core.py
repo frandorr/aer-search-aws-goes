@@ -5,8 +5,8 @@ from typing import Any, cast, override
 
 import geopandas as gpd
 import s3fs
-from aer.interfaces import AerProfile, SearchProvider
-from aer.schemas import AssetSchema
+from aereo.interfaces import AerProfile, SearchProvider
+from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
 from structlog import get_logger
@@ -153,7 +153,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
 
         Returns:
             A GeoDataFrame where each row represents a matched GOES granule
-            with columns defined by :class:`aer.schemas.AssetSchema`.
+            with columns defined by :class:`aereo.schemas.AssetSchema`.
 
         Raises:
             ValueError: If no matching granules are found.

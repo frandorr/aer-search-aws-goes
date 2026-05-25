@@ -15,7 +15,7 @@ echo ""
 
 # 1- Project name should start with aer-
 echo -e "${BOLD}1. Project Configuration${NC}"
-read -p "Enter your project name (e.g., aer-search-aws-goes): " PROJECT_NAME
+read -p "Enter your project name (e.g., aereo-search-aws-goes): " PROJECT_NAME
 if [[ ! $PROJECT_NAME =~ ^aer- ]]; then
     echo -e "${RED}Error: Project name must start with 'aer-'${NC}"
     exit 1
@@ -91,7 +91,7 @@ authors = [{ name = "$AUTHOR_NAME" }]
 requires-python = ">=3.13"
 
 dependencies = [
-    "aer-eo",
+    "aereo",
 ]
 
 [project.urls]
@@ -99,15 +99,15 @@ Homepage = "https://github.com/$GITHUB_ORG/$PROJECT_NAME"
 Issues = "https://github.com/$GITHUB_ORG/$PROJECT_NAME/issues"
 Repository = "https://github.com/$GITHUB_ORG/$PROJECT_NAME"
 
-[project.entry-points."aer.plugins"]
-$COMPONENT_NAME = "aer.$COMPONENT_NAME.core:$COMPONENT_NAME"
+[project.entry-points."aereo.plugins"]
+$COMPONENT_NAME = "aereo.$COMPONENT_NAME.core:$COMPONENT_NAME"
 
 [tool.hatch]
 build.hooks.polylith-bricks = {}
 build.targets.wheel.packages = ["aer"]
 
 [tool.polylith]
-bricks."../../components/aer/$COMPONENT_NAME" = "aer/$COMPONENT_NAME"
+bricks."../../components/aereo/$COMPONENT_NAME" = "aer/$COMPONENT_NAME"
 EOF
 
 # Install prek tool
@@ -118,11 +118,11 @@ uv tool install prek || true
 echo ""
 echo -e "${GREEN}${BOLD}========================================================${NC}"
 echo -e "${GREEN}${BOLD}Setup complete! Project $PROJECT_NAME is ready.      ${NC}"
-echo -e "Created component: ${BLUE}components/aer/$COMPONENT_NAME${NC}"
+echo -e "Created component: ${BLUE}components/aereo/$COMPONENT_NAME${NC}"
 echo -e "Created project:   ${BLUE}projects/$PROJECT_NAME${NC}"
 echo ""
 echo -e "Next steps:"
-echo -e "  1. Add your logic to ${BLUE}components/aer/$COMPONENT_NAME/core.py${NC}"
+echo -e "  1. Add your logic to ${BLUE}components/aereo/$COMPONENT_NAME/core.py${NC}"
 echo -e "  2. Run ${BLUE}uv run pytest${NC} to verify the setup"
 echo -e "  3. Use ${BLUE}uv run poly info${NC} to see your workspace"
 echo -e "${GREEN}${BOLD}========================================================${NC}"

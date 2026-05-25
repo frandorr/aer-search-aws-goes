@@ -3,7 +3,7 @@ requires = ["hatchling", "hatch-polylith-bricks"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aer-search-aws-goes"
+name = "aereo-search-aws-goes"
 version = "1.0.0"
 description = "Polylith project for the search-aws-goes plugin"
 readme = "README.md"
@@ -23,25 +23,25 @@ authors = [{ name = "Fran Dorr" }]
 requires-python = ">=3.12"
 
 dependencies = [
-    "aer-eo",
+    "aereo",
     "geopandas>=1.1.2,<2.0.0",
     "pandera[geopandas]>=0.24.0,<0.25.0",
     "s3fs>=2026.2.0,<2027.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/frandorr/aer-search-aws-goes"
-Issues = "https://github.com/frandorr/aer-search-aws-goes/issues"
-Repository = "https://github.com/frandorr/aer-search-aws-goes"
-Documentation = "https://frandorr.github.io/aer-search-aws-goes"
+Homepage = "https://github.com/frandorr/aereo-search-aws-goes"
+Issues = "https://github.com/frandorr/aereo-search-aws-goes/issues"
+Repository = "https://github.com/frandorr/aereo-search-aws-goes"
+Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 
-[project.entry-points."aer.plugins"]
-search_aws_goes = "aer.search_aws_goes.core:AwsGoesSearchPlugin"
+[project.entry-points."aereo.plugins"]
+search_aws_goes = "aereo.search_aws_goes.core:AwsGoesSearchPlugin"
 
 [tool.hatch]
 build.dev-mode-dirs = [ "../../components", "../../bases", "../../development", "." ]
 build.hooks.polylith-bricks = {}
-build.targets.wheel.packages = ["aer"]
+build.targets.wheel.packages = ["aereo"]
 
 [tool.polylith]
-bricks."../../components/aer/search_aws_goes" = "aer/search_aws_goes"
+bricks."../../components/aereo/search_aws_goes" = "aereo/search_aws_goes"

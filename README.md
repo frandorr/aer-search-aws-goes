@@ -1,6 +1,6 @@
-# 🚀 aer-search-aws-goes
+# 🚀 aereo-search-aws-goes
 
-The `aer-search-aws-goes` plugin is a high-performance search component for the `aer` ecosystem. It enables efficient discovery of GOES-R series satellite data (GOES-16 through GOES-19) stored in public AWS S3 buckets.
+The `aereo-search-aws-goes` plugin is a high-performance search component for the `aer` ecosystem. It enables efficient discovery of GOES-R series satellite data (GOES-16 through GOES-19) stored in public AWS S3 buckets.
 
 Powered by the [Polylith architecture](https://davidvujic.github.io/python-polylith-docs/setup/) and `uv`, this plugin provides a seamless way to query NOAA's GOES data archives without needing to manage complex S3 path logic.
 
@@ -25,8 +25,8 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 ```python
 from datetime import datetime, timezone
 from shapely.geometry import box
-from aer.client import AerClient
-from aer.interfaces import AerProfile
+from aereo.client import AerClient
+from aereo.interfaces import AerProfile
 
 # Define an AOI over the continental US
 aoi = box(-105, 25, -85, 45)
@@ -60,8 +60,8 @@ print(results[["collection", "start_time", "s3_url"]].head())
 
 This repository follows the **Polylith** workspace structure:
 
-*   **Components**: Core logic is located in `components/aer/search_aws_goes/`.
-*   **Projects**: The deployable PyPI package is defined in `projects/aer-search-aws-goes/`.
+*   **Components**: Core logic is located in `components/aereo/search_aws_goes/`.
+*   **Projects**: The deployable PyPI package is defined in `projects/aereo-search-aws-goes/`.
 *   **Tests**: Comprehensive unit and integration tests (mocked and live AWS) in `test/`.
 
 ---
@@ -101,7 +101,7 @@ This plugin uses [Conventional Commits](https://www.conventionalcommits.org/) an
 1.  Commit changes with prefixes like `feat:`, `fix:`, or `chore:`.
 2.  Run the release script:
     ```bash
-    python3 .agents/scripts/release.py aer-search-aws-goes
+    python3 .agents/scripts/release.py aereo-search-aws-goes
     ```
 
 The CI/CD pipeline in `.github/workflows/release.yml` will automatically build and publish the package to PyPI upon new tag creation.

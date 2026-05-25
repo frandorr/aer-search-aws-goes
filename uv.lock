@@ -12,12 +12,12 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "aer-search-aws-goes",
-    "aer-search-aws-goes-workspace",
+    "aereo-search-aws-goes",
+    "aereo-search-aws-goes-workspace",
 ]
 
 [[package]]
-name = "aer-eo"
+name = "aereo"
 version = "1.0.2"
 source = { editable = "../aer/projects/aer-core" }
 dependencies = [
@@ -28,8 +28,10 @@ dependencies = [
     { name = "pandas" },
     { name = "pandera", extra = ["geopandas"] },
     { name = "pyproj" },
+    { name = "rich" },
     { name = "shapely" },
     { name = "structlog" },
+    { name = "typer" },
     { name = "utm" },
 ]
 
@@ -42,17 +44,19 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.1" },
     { name = "pandera", extras = ["geopandas"], specifier = ">=0.24" },
     { name = "pyproj", specifier = ">=3.7.1" },
+    { name = "rich", specifier = ">=13" },
     { name = "shapely", specifier = ">=2.1.2" },
     { name = "structlog", specifier = ">=25.5" },
+    { name = "typer", specifier = ">=0.12" },
     { name = "utm", specifier = ">=0.8.1" },
 ]
 
 [[package]]
-name = "aer-search-aws-goes"
+name = "aereo-search-aws-goes"
 version = "1.0.0"
-source = { editable = "projects/aer-search-aws-goes" }
+source = { editable = "projects/aereo-search-aws-goes" }
 dependencies = [
-    { name = "aer-eo" },
+    { name = "aereo" },
     { name = "geopandas" },
     { name = "pandera", extra = ["geopandas"] },
     { name = "s3fs" },
@@ -60,18 +64,18 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aer-eo", editable = "../aer/projects/aer-core" },
+    { name = "aereo", editable = "../aer/projects/aer-core" },
     { name = "geopandas", specifier = ">=1.1.2,<2.0.0" },
     { name = "pandera", extras = ["geopandas"], specifier = ">=0.24.0,<0.25.0" },
     { name = "s3fs", specifier = ">=2026.2.0,<2027.0.0" },
 ]
 
 [[package]]
-name = "aer-search-aws-goes-workspace"
+name = "aereo-search-aws-goes-workspace"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aer-eo" },
+    { name = "aereo" },
     { name = "geopandas" },
     { name = "pandera", extra = ["geopandas"] },
     { name = "s3fs" },
@@ -88,7 +92,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aer-eo", editable = "../aer/projects/aer-core" },
+    { name = "aereo", editable = "../aer/projects/aer-core" },
     { name = "geopandas", specifier = ">=1.1.2" },
     { name = "pandera", extras = ["geopandas"], specifier = ">=0.24.0" },
     { name = "s3fs", specifier = ">=2026.2.0" },

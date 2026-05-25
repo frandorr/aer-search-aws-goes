@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aer-search-aws-goes-workspace"
+name = "aereo-search-aws-goes-workspace"
 version = "1.0.0"
 description = "A plugin repository for the AWS GOES aer search component"
 readme = "README.md"
@@ -21,23 +21,23 @@ classifiers = [
 ]
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
-    "aer-eo",
+    "aereo",
     "geopandas>=1.1.2",
     "pandera[geopandas]>=0.24.0",
     "s3fs>=2026.2.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/frandorr/aer-search-aws-goes"
-Repository = "https://github.com/frandorr/aer-search-aws-goes"
-Issues = "https://github.com/frandorr/aer-search-aws-goes/issues"
-Documentation = "https://frandorr.github.io/aer-search-aws-goes"
+Homepage = "https://github.com/frandorr/aereo-search-aws-goes"
+Repository = "https://github.com/frandorr/aereo-search-aws-goes"
+Issues = "https://github.com/frandorr/aereo-search-aws-goes/issues"
+Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 
 [tool.uv]
 managed = true
 
 [tool.uv.sources]
-aer-eo = { path = "../aer/projects/aer-core", editable = true }
+aereo = { path = "../aereo/projects/aereo", editable = true }
 
 [tool.uv.workspace]
 members = ["projects/*"]
@@ -76,7 +76,7 @@ dev = [
 ]
 
 [tool.polylith]
-bricks."components/aer/search-aws-goes" = "aer/search-aws-goes"
+bricks."components/aereo/search-aws-goes" = "aereo/search-aws-goes"
 
 [tool.pytest.ini_options]
 markers = [

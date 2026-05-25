@@ -1,5 +1,5 @@
 """
-Basic search example for aer-search-aws-goes.
+Basic search example for aereo-search-aws-goes.
 
 Searches for GOES-16 ABI Level-1b Radiance (CONUS) data over the
 central United States for a one-hour window.
@@ -7,8 +7,8 @@ central United States for a one-hour window.
 
 from datetime import datetime, timezone
 from shapely.geometry import box
-from aer.client import AerClient
-from aer.interfaces import AerProfile
+from aereo.client import AerClient
+from aereo.interfaces import AerProfile
 
 
 def main():
