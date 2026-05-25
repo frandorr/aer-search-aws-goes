@@ -1,6 +1,6 @@
 # 🚀 aereo-search-aws-goes
 
-The `aereo-search-aws-goes` plugin is a high-performance search component for the `aer` ecosystem. It enables efficient discovery of GOES-R series satellite data (GOES-16 through GOES-19) stored in public AWS S3 buckets.
+The `aereo-search-aws-goes` plugin is a high-performance search component for the `aereo` ecosystem. It enables efficient discovery of GOES-R series satellite data (GOES-16 through GOES-19) stored in public AWS S3 buckets.
 
 Powered by the [Polylith architecture](https://davidvujic.github.io/python-polylith-docs/setup/) and `uv`, this plugin provides a seamless way to query NOAA's GOES data archives without needing to manage complex S3 path logic.
 
@@ -16,7 +16,7 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 *   **Comprehensive Metadata**: Returns `GeoPandas` dataframes containing:
     *   `s3_url` and `https_url` for immediate data access.
     *   Granule IDs, timestamps, and file sizes.
-    *   Fully resolved `aer` Channel objects for further processing.
+    *   Fully resolved `aereo` Channel objects for further processing.
 
 ---
 
