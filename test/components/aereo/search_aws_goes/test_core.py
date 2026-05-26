@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 import geopandas as gpd
 
-from aereo.interfaces import AerProfile
+from aereo.interfaces import AereoProfile
 from aereo.search_aws_goes import GOES_EAST_C_POLY, GOES_WEST_F_POLY
 from aereo.search_aws_goes.core import AwsGoesSearchPlugin
 from shapely.geometry import MultiPolygon, Polygon
@@ -32,7 +32,7 @@ def test_search_aws_goes_empty(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
-    profile = AerProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
+    profile = AereoProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
     gdf = plugin.search(
         profiles=[profile],
         intersects=None,
@@ -63,7 +63,7 @@ def test_search_aws_goes_results(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
 
-    profile = AerProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
+    profile = AereoProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
     gdf = plugin.search(
         profiles=[profile],
         intersects=None,
@@ -89,7 +89,7 @@ def test_search_reads_collections_from_profiles(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
 
-    profile = AerProfile(
+    profile = AereoProfile(
         name="goes",
         resolution=1000.0,
         collections={"ABI-L1b-RadF": []},
@@ -123,7 +123,7 @@ def test_search_filters_by_profile_channels(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
-    profile = AerProfile(
+    profile = AereoProfile(
         name="goes",
         resolution=1000.0,
         collections={"ABI-L1b-RadF": ["C01"]},
@@ -165,7 +165,7 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
     # Only request band 13
-    profile = AerProfile(
+    profile = AereoProfile(
         name="goes",
         resolution=1000.0,
         collections={"ABI-L1b-RadF": ["C13"]},
@@ -192,13 +192,13 @@ def test_search_params_flow_through_to_s3fs(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
-    profile = AerProfile(
+    profile = AereoProfile(
         name="goes",
         resolution=1000.0,
         collections={"ABI-L1b-RadF": []},
         search_params={"requester_pays": True},
     )
-    # Simulate what AerClient.search() does: merge profile.search_params
+    # Simulate what AereoClient.search() does: merge profile.search_params
     # over batch search_params and pass the merged dict as search_params.
     gdf = plugin.search(
         profiles=[profile],
@@ -223,7 +223,7 @@ def test_search_params_can_override_anon(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
-    profile = AerProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
+    profile = AereoProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
     gdf = plugin.search(
         profiles=[profile],
         intersects=None,
@@ -247,7 +247,7 @@ def test_search_aws_goes_real():
     start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     end_datetime = datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc)
 
-    profile = AerProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
+    profile = AereoProfile(name="goes", resolution=1000.0, collections={"ABI-L1b-RadF": []})
     gdf = plugin.search(
         profiles=[profile],
         intersects=None,

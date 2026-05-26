@@ -7,8 +7,8 @@ central United States for a one-hour window.
 
 from datetime import datetime, timezone
 from shapely.geometry import box
-from aereo.client import AerClient
-from aereo.interfaces import AerProfile
+from aereo.client import AereoClient
+from aereo.interfaces import AereoProfile
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
     aoi = box(-105, 25, -85, 45)
 
     # Create a profile that uses the AWS GOES search plugin
-    profile = AerProfile(
+    profile = AereoProfile(
         name="goes_rad_c01",
         resolution=1000,
         collections={"ABI-L1b-RadC": ["C01"]},
@@ -25,7 +25,7 @@ def main():
     )
 
     # Search for GOES data
-    client = AerClient()
+    client = AereoClient()
     results = client.search(
         profiles=[profile],
         intersects=aoi,

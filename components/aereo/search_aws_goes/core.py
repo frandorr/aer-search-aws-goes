@@ -5,7 +5,7 @@ from typing import Any, cast, override
 
 import geopandas as gpd
 import s3fs
-from aereo.interfaces import AerProfile, SearchProvider
+from aereo.interfaces import AereoProfile, SearchProvider
 from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
@@ -126,7 +126,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
     @override
     def search(
         self,
-        profiles: Sequence[AerProfile],
+        profiles: Sequence[AereoProfile],
         intersects: BaseGeometry | None = None,
         start_datetime: datetime | None = None,
         end_datetime: datetime | None = None,
@@ -138,7 +138,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         based on the requested time range.
 
         Args:
-            profiles: Sequence of :class:`AerProfile` objects defining what
+            profiles: Sequence of :class:`AereoProfile` objects defining what
                 to search for.  Collections are read from each profile; channels
                 are derived from ``profile.collections.values()``, and satellite
                 from ``profile.search_params.get("satellite")``.
@@ -149,7 +149,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
             end_datetime: Inclusive end of the temporal query range.
             search_params: Meta-level parameters forwarded to ``s3fs.S3FileSystem``
                 (e.g. ``anon``, ``key``, ``secret``).  Domain-specific config lives
-                on each :class:`AerProfile`.
+                on each :class:`AereoProfile`.
 
         Returns:
             A GeoDataFrame where each row represents a matched GOES granule
@@ -161,7 +161,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         if not profiles:
             return self._empty_result()
 
-        # Collections are already mapped to supported_collections case by AerClient
+        # Collections are already mapped to supported_collections case by AereoClient
         # Validate against SUPPORTED_PRODUCTS directly
         normalized_collections = []
         supported_set = set(SUPPORTED_PRODUCTS)
