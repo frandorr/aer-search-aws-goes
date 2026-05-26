@@ -5,7 +5,7 @@ from typing import Any, cast, override
 
 import geopandas as gpd
 import s3fs
-from aereo.interfaces import AereoProfile, SearchProvider
+from aereo.interfaces import AereoProfile, PluginParam, SearchProvider
 from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
@@ -122,6 +122,13 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
     """
 
     supported_collections: Sequence[str] = SUPPORTED_PRODUCTS
+
+    # S3FileSystem credentials (all optional — anon=True is the default)
+    optional_params = [
+        PluginParam(name="anon", type="bool", description="Use anonymous S3 access", default=True),
+        PluginParam(name="key", type="str", description="AWS access key ID"),
+        PluginParam(name="secret", type="str", description="AWS secret access key"),
+    ]
 
     @override
     def search(
