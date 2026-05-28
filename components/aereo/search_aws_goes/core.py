@@ -166,7 +166,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
             ValueError: If no matching granules are found.
         """
         if not profiles:
-            return self._empty_result()
+            return self.empty_result()
 
         # Collections are already mapped to supported_collections case by AereoClient
         # Validate against SUPPORTED_PRODUCTS directly
@@ -219,7 +219,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
             requested_satellites = set(sat_to_bucket.keys())
 
         if not start_datetime or not end_datetime:
-            return self._empty_result()
+            return self.empty_result()
 
         search_start = start_datetime.replace(minute=0, second=0, microsecond=0)
         search_end = end_datetime
@@ -296,14 +296,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
                         logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
 
         if not rows:
-            return self._empty_result()
+            return self.empty_result()
 
         gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-        return cast(GeoDataFrame, AssetSchema.validate(gdf))
-
-    def _empty_result(self) -> GeoDataFrame[AssetSchema]:
-        columns = list(AssetSchema.to_schema().columns.keys())
-        if "geometry" not in columns:
-            columns.append("geometry")
-        gdf = gpd.GeoDataFrame(columns=columns, geometry="geometry")
         return cast(GeoDataFrame, AssetSchema.validate(gdf))
