@@ -25,24 +25,23 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 ```python
 from datetime import datetime, timezone
 from shapely.geometry import box
-from aereo.client import AerClient
-from aereo.interfaces import AerProfile
+from aereo.client import AereoClient
+from aereo.interfaces import AereoProfile
 
 # Define an AOI over the continental US
 aoi = box(-105, 25, -85, 45)
 
 # Create a profile that uses the AWS GOES search plugin
-profile = AerProfile(
+profile = AereoProfile(
     name="goes_rad_c01",
     resolution=1000,
-    collections=["ABI-L1b-RadC"],
-    channels=["C01"],
-    satellite="GOES-16",
+    collections={"ABI-L1b-RadC": ["C01"]},
+    search_params={"satellite": "GOES-16"},
     plugin_hints={"search": "search_aws_goes"},
 )
 
 # Search for GOES data
-client = AerClient()
+client = AereoClient()
 results = client.search(
     profiles=[profile],
     intersects=aoi,

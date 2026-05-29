@@ -9,7 +9,7 @@ description = "A plugin repository for the AWS GOES aer search component"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-keywords = ["satellite", "remote-sensing", "earth-observation", "aer", "plugin"]
+keywords = ["satellite", "remote-sensing", "earth-observation", "aereo", "plugin"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -76,7 +76,7 @@ dev = [
 ]
 
 [tool.polylith]
-bricks."components/aereo/search-aws-goes" = "aereo/search-aws-goes"
+bricks."components/aereo/search_aws_goes" = "aereo/search_aws_goes"
 
 [tool.pytest.ini_options]
 markers = [

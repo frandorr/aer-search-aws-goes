@@ -128,6 +128,7 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
         PluginParam(name="anon", type="bool", description="Use anonymous S3 access", default=True),
         PluginParam(name="key", type="str", description="AWS access key ID"),
         PluginParam(name="secret", type="str", description="AWS secret access key"),
+        PluginParam(name="satellite", type="str", description="GOES satellite identifier (e.g. GOES-16, GOES-19)"),
     ]
 
     @override
