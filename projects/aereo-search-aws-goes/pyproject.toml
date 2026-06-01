@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Polylith project for the search-aws-goes plugin"
 readme = "README.md"
 license = "Apache-2.0"
-keywords = ["satellite", "remote-sensing", "earth-observation", "aer", "plugin"]
+keywords = ["satellite", "remote-sensing", "earth-observation", "aereo", "plugin"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -37,6 +37,9 @@ Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 
 [project.entry-points."aereo.plugins"]
 search_aws_goes = "aereo.search_aws_goes.core:AwsGoesSearchPlugin"
+
+[project.entry-points."aereo.search"]
+aws_goes = "aereo.search_aws_goes.nodes"
 
 [tool.hatch]
 build.dev-mode-dirs = [ "../../components", "../../bases", "../../development", "." ]
