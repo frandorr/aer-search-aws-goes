@@ -1,11 +1,10 @@
-from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, cast, override
+from typing import Any, cast
 
 import geopandas as gpd
 import s3fs
-from aereo.interfaces import AereoProfile, PluginParam, SearchProvider
+from aereo.interfaces import SearchProvider
 from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
@@ -17,7 +16,6 @@ logger = get_logger()
 
 CURRENT_DIR = Path(__file__).parent
 AREAS_FILE = CURRENT_DIR / "areas.yaml"
-
 
 SUPPORTED_PRODUCTS = [
     "ABI-L1b-RadC",
@@ -108,139 +106,102 @@ SUPPORTED_PRODUCTS = [
     "GLM-L2-LCFA",
 ]
 
+SAT_TO_BUCKET = {
+    "GOES-16": "noaa-goes16",
+    "GOES-17": "noaa-goes17",
+    "GOES-18": "noaa-goes18",
+    "GOES-19": "noaa-goes19",
+}
 
-class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
+
+class SearchAwsGoes(SearchProvider):
     """Search provider for NOAA GOES-R ABI products on AWS S3.
 
     This plugin traverses the public NOAA GOES S3 buckets
     (``noaa-goes16``, ``noaa-goes17``, ``noaa-goes18``, ``noaa-goes19``)
     by year/day/hour prefix and returns matching NetCDF assets as a
     validated GeoDataFrame.
-
-    Supported collections include all ABI L1b/L2 products listed in
-    :data:`SUPPORTED_PRODUCTS` (e.g. ``ABI-L1b-RadC``, ``ABI-L2-CMIPF``).
     """
 
-    supported_collections: Sequence[str] = SUPPORTED_PRODUCTS
+    collections: list[str] | None = None
+    intersects: BaseGeometry | None = None
+    start_datetime: datetime | None = None
+    end_datetime: datetime | None = None
+    channels: list[str] | None = None
+    satellites: list[str] | None = None
+    anon: bool = True
+    key: str | None = None
+    secret: str | None = None
 
-    # S3FileSystem credentials (all optional — anon=True is the default)
-    optional_params = [
-        PluginParam(name="anon", type="bool", description="Use anonymous S3 access", default=True),
-        PluginParam(name="key", type="str", description="AWS access key ID"),
-        PluginParam(name="secret", type="str", description="AWS secret access key"),
-        PluginParam(name="satellite", type="str", description="GOES satellite identifier (e.g. GOES-16, GOES-19)"),
-    ]
-
-    @override
-    def search(
-        self,
-        profiles: Sequence[AereoProfile],
-        intersects: BaseGeometry | None = None,
-        start_datetime: datetime | None = None,
-        end_datetime: datetime | None = None,
-        search_params: Mapping[str, Any] | None = None,
-    ) -> GeoDataFrame[AssetSchema]:
+    def __call__(self) -> GeoDataFrame[AssetSchema]:
         """Search for GOES ABI products on AWS S3.
 
-        This plugin traverses the NOAA GOES S3 buckets by year/day/hour
-        based on the requested time range.
-
-        Args:
-            profiles: Sequence of :class:`AereoProfile` objects defining what
-                to search for.  Collections are read from each profile; channels
-                are derived from ``profile.collections.values()``, and satellite
-                from ``profile.search_params.get("satellite")``.
-            intersects: Optional geometry to spatially filter results.
-                Currently unused because GOES domain geometry is derived from
-                the product name.
-            start_datetime: Inclusive start of the temporal query range.
-            end_datetime: Inclusive end of the temporal query range.
-            search_params: Meta-level parameters forwarded to ``s3fs.S3FileSystem``
-                (e.g. ``anon``, ``key``, ``secret``).  Domain-specific config lives
-                on each :class:`AereoProfile`.
+        Uses instance fields to configure the search.
 
         Returns:
             A GeoDataFrame where each row represents a matched GOES granule
             with columns defined by :class:`aereo.schemas.AssetSchema`.
-
-        Raises:
-            ValueError: If no matching granules are found.
         """
-        if not profiles:
+        if not self.collections:
             return self.empty_result()
 
-        # Collections are already mapped to supported_collections case by AereoClient
-        # Validate against SUPPORTED_PRODUCTS directly
-        normalized_collections = []
         supported_set = set(SUPPORTED_PRODUCTS)
-        for col in (c for p in profiles for c in p.collections):
+        normalized_collections = []
+        for col in self.collections:
             if col in supported_set:
                 normalized_collections.append(col)
             else:
                 logger.warning("Skipping unsupported collection", collection=col)
 
-        if search_params is None:
-            search_params = {}
-
-        fs_kwargs = dict(search_params)
-        fs_kwargs.pop("satellite", None)
-        if "anon" not in fs_kwargs:
-            fs_kwargs["anon"] = True
-        fs = s3fs.S3FileSystem(**fs_kwargs)
-        rows: list[dict[str, Any]] = []
-
-        sat_to_bucket = {
-            "GOES-16": "noaa-goes16",
-            "GOES-17": "noaa-goes17",
-            "GOES-18": "noaa-goes18",
-            "GOES-19": "noaa-goes19",
-        }
-
-        requested_channel_ids: set[str] | None = None
-        profile_channels: set[str] = set()
-        for p in profiles:
-            for vars_ in p.collections.values():
-                for ch in vars_:
-                    ch_str = str(ch).upper()
-                    if ch_str.startswith("C"):
-                        ch_str = ch_str[1:]
-                    try:
-                        profile_channels.add(str(int(ch_str)))
-                    except ValueError:
-                        profile_channels.add(str(ch))
-        if profile_channels:
-            requested_channel_ids = profile_channels
-
-        requested_satellites: set[str] = set()
-        for p in profiles:
-            sat = p.search_params.get("satellite")
-            if sat:
-                requested_satellites.add(str(sat).upper())
-        if not requested_satellites:
-            requested_satellites = set(sat_to_bucket.keys())
-
-        if not start_datetime or not end_datetime:
+        if not normalized_collections:
             return self.empty_result()
 
-        search_start = start_datetime.replace(minute=0, second=0, microsecond=0)
-        search_end = end_datetime
+        if not self.start_datetime or not self.end_datetime:
+            return self.empty_result()
 
-        q_start = start_datetime
+        fs_kwargs: dict[str, Any] = {"anon": self.anon}
+        if self.key is not None:
+            fs_kwargs["key"] = self.key
+        if self.secret is not None:
+            fs_kwargs["secret"] = self.secret
+        fs = s3fs.S3FileSystem(**fs_kwargs)
+
+        requested_satellites = set(self.satellites) if self.satellites else set(SAT_TO_BUCKET.keys())
+
+        requested_channel_ids: set[str] | None = None
+        if self.channels:
+            profile_channels: set[str] = set()
+            for ch in self.channels:
+                ch_str = str(ch).upper()
+                if ch_str.startswith("C"):
+                    ch_str = ch_str[1:]
+                try:
+                    profile_channels.add(str(int(ch_str)))
+                except ValueError:
+                    profile_channels.add(str(ch))
+            requested_channel_ids = profile_channels if profile_channels else None
+
+        q_start = self.start_datetime
         if q_start.tzinfo is None:
             q_start = q_start.replace(tzinfo=timezone.utc)
-        q_end = end_datetime
+        q_end = self.end_datetime
         if q_end.tzinfo is None:
             q_end = q_end.replace(tzinfo=timezone.utc)
 
-        current_hour = search_start
+        search_start = q_start.replace(minute=0, second=0, microsecond=0)
+        search_end = q_end
+
         hourly_steps = []
+        current_hour = search_start
         while current_hour <= search_end:
             hourly_steps.append(current_hour)
             current_hour += timedelta(hours=1)
 
+        rows: list[dict[str, Any]] = []
+
         for collection in normalized_collections:
             for satellite in requested_satellites:
-                bucket = sat_to_bucket.get(satellite)
+                bucket = SAT_TO_BUCKET.get(satellite)
                 if not bucket:
                     continue
 
@@ -271,9 +232,6 @@ class AwsGoesSearchPlugin(SearchProvider, plugin_abstract=False):
 
                             domain = _parse_domain(collection)
                             geometry = _get_geometry(satellite, domain)
-                            # Granule level row
-                            # from pathlib import Path
-
                             granule_id = Path(filename).stem
 
                             rows.append(

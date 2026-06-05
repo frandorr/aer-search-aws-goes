@@ -36,10 +36,7 @@ Repository = "https://github.com/frandorr/aereo-search-aws-goes"
 Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 
 [project.entry-points."aereo.plugins"]
-search_aws_goes = "aereo.search_aws_goes.core:AwsGoesSearchPlugin"
-
-[project.entry-points."aereo.search"]
-aws_goes = "aereo.search_aws_goes.nodes"
+search_aws_goes = "aereo.search_aws_goes.core:SearchAwsGoes"
 
 [tool.hatch]
 build.dev-mode-dirs = [ "../../components", "../../bases", "../../development", "." ]
