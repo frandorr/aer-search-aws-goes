@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -144,11 +146,11 @@ def _parse_goes_filename(filename: str) -> dict[str, Any]:
 
 def _parse_domain(collection: str) -> str:
     """Parse the domain from a GOES product collection name."""
+    if collection.lower() == "glm-l2-lcfa":
+        return "F"
     domain = collection[-1]
     if domain in ["C", "F", "M"]:
         return domain
-    if domain.lower() == "GLM-L2-LCFA":
-        return "F"
     raise ValueError(f"Unknown GOES domain in collection name: {collection}")
 
 

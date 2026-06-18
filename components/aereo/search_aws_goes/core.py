@@ -1,10 +1,12 @@
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+from datetime import timedelta, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import geopandas as gpd
 import s3fs
-from aereo.interfaces import SearchProvider
+from aereo.interfaces import SearchProvider, build_collection_asset_filters
 from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
 from shapely.geometry.base import BaseGeometry
@@ -123,15 +125,27 @@ class SearchAwsGoes(SearchProvider):
     validated GeoDataFrame.
     """
 
-    collections: list[str] | None = None
-    intersects: BaseGeometry | None = None
-    start_datetime: datetime | None = None
-    end_datetime: datetime | None = None
+    supported_collections: ClassVar[tuple[str, ...]] = tuple(SUPPORTED_PRODUCTS)
     channels: list[str] | None = None
     satellites: list[str] | None = None
     anon: bool = True
     key: str | None = None
     secret: str | None = None
+
+    @staticmethod
+    def _normalize_channel(channel: str) -> str:
+        """Normalize a GOES channel identifier to a numeric string.
+
+        Accepts inputs like ``"C01"``, ``"c01"``, ``"1"`` and returns ``"1"``.
+        Non-numeric values are returned unchanged.
+        """
+        ch_str = str(channel).upper()
+        if ch_str.startswith("C"):
+            ch_str = ch_str[1:]
+        try:
+            return str(int(ch_str))
+        except ValueError:
+            return str(channel)
 
     def __call__(self) -> GeoDataFrame[AssetSchema]:
         """Search for GOES ABI products on AWS S3.
@@ -142,12 +156,13 @@ class SearchAwsGoes(SearchProvider):
             A GeoDataFrame where each row represents a matched GOES granule
             with columns defined by :class:`aereo.schemas.AssetSchema`.
         """
-        if not self.collections:
+        collections, asset_filters = build_collection_asset_filters(self.collections)
+        if not collections:
             return self.empty_result()
 
         supported_set = set(SUPPORTED_PRODUCTS)
         normalized_collections = []
-        for col in self.collections:
+        for col in collections:
             if col in supported_set:
                 normalized_collections.append(col)
             else:
@@ -168,18 +183,16 @@ class SearchAwsGoes(SearchProvider):
 
         requested_satellites = set(self.satellites) if self.satellites else set(SAT_TO_BUCKET.keys())
 
-        requested_channel_ids: set[str] | None = None
+        requested_channel_ids: set[str] = set()
         if self.channels:
-            profile_channels: set[str] = set()
             for ch in self.channels:
-                ch_str = str(ch).upper()
-                if ch_str.startswith("C"):
-                    ch_str = ch_str[1:]
-                try:
-                    profile_channels.add(str(int(ch_str)))
-                except ValueError:
-                    profile_channels.add(str(ch))
-            requested_channel_ids = profile_channels if profile_channels else None
+                requested_channel_ids.add(self._normalize_channel(ch))
+        for col in normalized_collections:
+            col_channels = asset_filters.get(col)
+            if col_channels:
+                for ch in col_channels:
+                    requested_channel_ids.add(self._normalize_channel(ch))
+        requested_channel_ids = requested_channel_ids or None
 
         q_start = self.start_datetime
         if q_start.tzinfo is None:
@@ -198,6 +211,8 @@ class SearchAwsGoes(SearchProvider):
             current_hour += timedelta(hours=1)
 
         rows: list[dict[str, Any]] = []
+
+        intersects = cast(BaseGeometry | None, self.intersects)
 
         for collection in normalized_collections:
             for satellite in requested_satellites:
@@ -232,6 +247,9 @@ class SearchAwsGoes(SearchProvider):
 
                             domain = _parse_domain(collection)
                             geometry = _get_geometry(satellite, domain)
+                            if intersects is not None and geometry is not None and not intersects.intersects(geometry):
+                                continue
+
                             granule_id = Path(filename).stem
 
                             rows.append(
