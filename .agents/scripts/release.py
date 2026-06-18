@@ -26,7 +26,7 @@ def find_projects():
 
 
 def resolve_project(name: str):
-    if name.startswith("aer-"):
+    if name.startswith("aereo-"):
         return PROJECTS_DIR / name
 
     for p in find_projects():

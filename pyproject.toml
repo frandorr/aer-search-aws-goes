@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "aereo-search-aws-goes-workspace"
 version = "1.0.0"
-description = "A plugin repository for the AWS GOES aer search component"
+description = "A plugin repository for the AWS GOES aereo search component"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -21,11 +21,15 @@ classifiers = [
 ]
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
-    "aereo",
+    "aereo>=1.1,<2.0",
     "geopandas>=1.1.2",
     "pandera[geopandas]>=0.24.0",
-    "s3fs>=2026.2.0",
+    "pyresample>=1.35.0",
+    "s3fs>=2026.2.0,<2027.0.0",
 ]
+
+[project.entry-points."aereo.plugins"]
+search_aws_goes = "aereo.search_aws_goes.core:SearchAwsGoes"
 
 [project.urls]
 Homepage = "https://github.com/frandorr/aereo-search-aws-goes"

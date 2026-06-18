@@ -1,6 +1,6 @@
 # PyPI Publishing Guide
 
-This template is designed to work with GitHub Actions for automated publishing to PyPI. The process is **tag-triggered**: when you create a tag like `aer-xyz-v1.0.0`, the CI will build and upload that specific package.
+This template is designed to work with GitHub Actions for automated publishing to PyPI. The process is **tag-triggered**: when you create a tag like `aereo-xyz-v1.0.0`, the CI will build and upload that specific package.
 
 ---
 
@@ -23,7 +23,7 @@ name: Publish Plugin to PyPI
 on:
   push:
     tags:
-      - "aer-*-v*" # Triggers on tags like aereo-search-aws-goes-v1.0.0
+      - "aereo-*-v*" # Triggers on tags like aereo-search-aws-goes-v1.0.0
 
 jobs:
   publish:

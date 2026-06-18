@@ -4,7 +4,7 @@ Thank you for your interest in contributing!
 
 ## General Guidelines
 
-Please refer to the [AER core CONTRIBUTING.md](https://github.com/<org>/aer/blob/main/CONTRIBUTING.md) for:
+Please refer to the [AEREO core CONTRIBUTING.md](https://github.com/<org>/aereo/blob/main/CONTRIBUTING.md) for:
 - Reporting issues
 - Development setup with uv and Polylith
 - Pull request process
@@ -28,7 +28,7 @@ uv run pytest
 uv run ruff check .
 ```
 
-This plugin requires `aer` core for some tests. If you are developing alongside `aer` core, install it as an editable dependency.
+This plugin requires `aereo` core for some tests. If you are developing alongside `aereo` core, install it as an editable dependency.
 
 ### Plugin Structure
 

@@ -9,14 +9,15 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 ## ✨ Features
 
 *   **Multi-Satellite Support**: Discover data from GOES-16, GOES-17, GOES-18, and GOES-19.
-*   **Product Coverage**: Specifically optimized for ABI Level 1b Radiance products:
+*   **Product Coverage**: Supports a wide range of ABI Level 1b and Level 2 products, including:
     *   `ABI-L1b-RadF`: Full Disk
     *   `ABI-L1b-RadC`: CONUS
+    *   `ABI-L1b-RadM`: Mesoscale
 *   **Granular Filtering**: Filter results by exact time ranges and specific ABI channels (Bands 1-16).
 *   **Comprehensive Metadata**: Returns `GeoPandas` dataframes containing:
-    *   `s3_url` and `https_url` for immediate data access.
+    *   `href` (S3 URL) and `https_url` for immediate data access.
     *   Granule IDs, timestamps, and file sizes.
-    *   Fully resolved `aereo` Channel objects for further processing.
+    *   Satellite, domain, and channel metadata.
 
 ---
 
@@ -26,31 +27,26 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 from datetime import datetime, timezone
 from shapely.geometry import box
 from aereo.client import AereoClient
-from aereo.interfaces import AereoProfile
+from aereo.search_aws_goes import SearchAwsGoes
 
 # Define an AOI over the continental US
 aoi = box(-105, 25, -85, 45)
 
-# Create a profile that uses the AWS GOES search plugin
-profile = AereoProfile(
-    name="goes_rad_c01",
-    resolution=1000,
+# Configure the AWS GOES search provider
+search_provider = SearchAwsGoes(
     collections={"ABI-L1b-RadC": ["C01"]},
-    search_params={"satellite": "GOES-16"},
-    plugin_hints={"search": "search_aws_goes"},
+    intersects=aoi,
+    start_datetime=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
+    end_datetime=datetime(2025, 6, 1, 13, 0, tzinfo=timezone.utc),
+    satellites=["GOES-16"],
 )
 
 # Search for GOES data
 client = AereoClient()
-results = client.search(
-    profiles=[profile],
-    intersects=aoi,
-    start_datetime=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
-    end_datetime=datetime(2025, 6, 1, 13, 0, tzinfo=timezone.utc),
-)
+results = client.search(search_provider=search_provider)
 
 print(f"Found {len(results)} granules")
-print(results[["collection", "start_time", "s3_url"]].head())
+print(results[["collection", "start_time", "href"]].head())
 ```
 
 ---
