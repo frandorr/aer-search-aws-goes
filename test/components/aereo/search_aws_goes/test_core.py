@@ -4,8 +4,9 @@ from unittest.mock import patch
 import geopandas as gpd
 
 from aereo.search_aws_goes import GOES_EAST_C_POLY, GOES_WEST_F_POLY
-from aereo.search_aws_goes.core import SearchAwsGoes
+from aereo.search_aws_goes.core import search_aws_goes
 from aereo.search_aws_goes.utils import _parse_domain
+from aereo.registry import AereoRegistry
 from shapely.geometry import MultiPolygon, Polygon, box
 
 
@@ -41,15 +42,15 @@ def test_parse_domain_unknown():
 
 @patch("aereo.search_aws_goes.core.s3fs.S3FileSystem")
 def test_search_aws_goes_empty(mock_s3_cls):
-    plugin = SearchAwsGoes(
-        collections=["ABI-L1b-RadF"],
-        start_datetime=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
-        end_datetime=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
-    )
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
-    gdf = plugin()
+    gdf = search_aws_goes(
+        collections=["ABI-L1b-RadF"],
+        intersects=None,
+        start_datetime=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
+        end_datetime=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
+    )
 
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert gdf.empty
@@ -72,12 +73,12 @@ def test_search_aws_goes_results(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
     )
-    gdf = plugin()
 
     assert not gdf.empty
     assert len(gdf) == 1
@@ -95,13 +96,13 @@ def test_search_reads_collections(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: [{"name": path, "size": 1024 * 1024}] if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         satellites=["GOES-16"],
     )
-    gdf = plugin()
 
     assert not gdf.empty
     assert all(r["collection"] == "ABI-L1b-RadF" for _, r in gdf.iterrows())
@@ -122,13 +123,13 @@ def test_search_filters_by_channels(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         channels=["C01"],
     )
-    gdf = plugin()
 
     assert len(gdf) == 1
     assert gdf.iloc[0]["channel_id"] == "1"
@@ -158,13 +159,13 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
     # Only request band 13
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         channels=["C13"],
     )
-    gdf = plugin()
 
     assert len(gdf) == 1
     assert "C13" in gdf.iloc[0]["href"]
@@ -173,19 +174,18 @@ def test_search_aws_goes_filters_by_channel(mock_s3_cls):
 
 @patch("aereo.search_aws_goes.core.s3fs.S3FileSystem")
 def test_search_params_flow_through_to_s3fs(mock_s3_cls):
-    """Credentials should be forwarded to s3fs.S3FileSystem."""
+    """S3FileSystem is always created with anon=True."""
     start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.return_value = []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
-        anon=True,
     )
-    gdf = plugin()
 
     assert isinstance(gdf, gpd.GeoDataFrame)
     kwargs = mock_s3_cls.call_args.kwargs
@@ -193,51 +193,26 @@ def test_search_params_flow_through_to_s3fs(mock_s3_cls):
 
 
 @patch("aereo.search_aws_goes.core.s3fs.S3FileSystem")
-def test_search_params_can_override_anon(mock_s3_cls):
-    """Plugin should be able to override the default anon=True."""
-    start_datetime = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-    end_datetime = datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc)
-    mock_fs = mock_s3_cls.return_value
-    mock_fs.ls.return_value = []
-
-    plugin = SearchAwsGoes(
-        collections=["ABI-L1b-RadF"],
-        start_datetime=start_datetime,
-        end_datetime=end_datetime,
-        anon=False,
-        key="abc",
-        secret="xyz",
-    )
-    gdf = plugin()
-
-    assert isinstance(gdf, gpd.GeoDataFrame)
-    kwargs = mock_s3_cls.call_args.kwargs
-    assert kwargs["anon"] is False
-    assert kwargs["key"] == "abc"
-    assert kwargs["secret"] == "xyz"
-
-
-@patch("aereo.search_aws_goes.core.s3fs.S3FileSystem")
 def test_search_no_collections_returns_empty(mock_s3_cls):
     """If collections is None or empty, return empty result."""
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=None,
+        intersects=None,
         start_datetime=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end_datetime=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
     )
-    gdf = plugin()
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert gdf.empty
 
 
 @patch("aereo.search_aws_goes.core.s3fs.S3FileSystem")
 def test_search_empty_collections_returns_empty(mock_s3_cls):
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=[],
+        intersects=None,
         start_datetime=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end_datetime=datetime(2024, 1, 1, 12, 10, tzinfo=timezone.utc),
     )
-    gdf = plugin()
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert gdf.empty
 
@@ -245,12 +220,12 @@ def test_search_empty_collections_returns_empty(mock_s3_cls):
 @pytest.mark.integration
 @pytest.mark.slow
 def test_search_aws_goes_real():
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc),
         end_datetime=datetime(2024, 1, 1, 12, 1, tzinfo=timezone.utc),
     )
-    gdf = plugin()
 
     assert not gdf.empty, "Expected to find GOES files on AWS for 2024-001 12:00"
     assert "href" in gdf.columns
@@ -273,13 +248,13 @@ def test_search_accepts_collections_mapping(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections={"ABI-L1b-RadF": ["C01"]},
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         satellites=["GOES-16"],
     )
-    gdf = plugin()
 
     assert len(gdf) == 1
     assert gdf.iloc[0]["channel_id"] == "1"
@@ -300,14 +275,13 @@ def test_search_filters_by_intersects(mock_s3_cls):
 
     # AOI south of the GOES-East full disk footprint should return no results
     far_south_aoi = box(-180.0, -89.0, 180.0, -85.0)
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=far_south_aoi,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         satellites=["GOES-16"],
-        intersects=far_south_aoi,
     )
-    gdf = plugin()
 
     assert gdf.empty
 
@@ -329,13 +303,13 @@ def test_search_returns_all_channels_when_none_specified(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         satellites=["GOES-16"],
     )
-    gdf = plugin()
 
     assert len(gdf) == 3
     assert sorted(gdf["channel_id"].tolist()) == ["1", "13", "2"]
@@ -354,14 +328,21 @@ def test_search_goes19_bucket(mock_s3_cls):
     mock_fs = mock_s3_cls.return_value
     mock_fs.ls.side_effect = lambda p, detail=False: files if p == prefix else []
 
-    plugin = SearchAwsGoes(
+    gdf = search_aws_goes(
         collections=["ABI-L1b-RadF"],
+        intersects=None,
         start_datetime=start_datetime,
         end_datetime=end_datetime,
         satellites=["GOES-19"],
     )
-    gdf = plugin()
 
     assert len(gdf) == 1
     assert gdf.iloc[0]["satellite"] == "GOES-19"
     assert "noaa-goes19" in gdf.iloc[0]["href"]
+
+
+def test_search_aws_goes_entry_point_resolves():
+    registry = AereoRegistry()
+    assert registry.has("searcher", "search_aws_goes")
+    plugin = registry.get("searcher", "search_aws_goes")
+    assert callable(plugin)

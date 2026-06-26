@@ -1,14 +1,14 @@
 """Simplified nodes module for backward compatibility.
 
-Re-exports :class:`SearchAwsGoes` from the core module.
+Re-exports ``search_aws_goes`` and constants from the core module.
 """
 
-from aereo.search_aws_goes.core import SAT_TO_BUCKET, SearchAwsGoes, SUPPORTED_PRODUCTS
+from aereo.search_aws_goes.core import SAT_TO_BUCKET, SUPPORTED_PRODUCTS, search_aws_goes
 
 supported_collections = tuple(SUPPORTED_PRODUCTS)
 
 __all__ = [
     "SAT_TO_BUCKET",
-    "SearchAwsGoes",
+    "search_aws_goes",
     "supported_collections",
 ]

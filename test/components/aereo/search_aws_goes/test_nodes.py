@@ -1,6 +1,6 @@
 """Tests for simplified nodes module backward compatibility."""
 
-from aereo.search_aws_goes.nodes import SAT_TO_BUCKET, SearchAwsGoes, supported_collections
+from aereo.search_aws_goes.nodes import SAT_TO_BUCKET, search_aws_goes, supported_collections
 
 
 def test_supported_collections_is_tuple_of_products() -> None:
@@ -15,4 +15,4 @@ def test_sat_to_bucket() -> None:
 
 
 def test_search_aws_goes_exported() -> None:
-    assert SearchAwsGoes is not None
+    assert callable(search_aws_goes)

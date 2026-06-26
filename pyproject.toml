@@ -21,7 +21,7 @@ classifiers = [
 ]
 authors = [{ name = "Fran Dorr" }]
 dependencies = [
-    "aereo>=1.1,<2.0",
+    "aereo",
     "geopandas>=1.1.2",
     "pandera[geopandas]>=0.24.0",
     "pyresample>=1.35.0",
@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.entry-points."aereo.plugins"]
-search_aws_goes = "aereo.search_aws_goes.core:SearchAwsGoes"
+search_aws_goes = "aereo.search_aws_goes.core:search_aws_goes"
 
 [project.urls]
 Homepage = "https://github.com/frandorr/aereo-search-aws-goes"

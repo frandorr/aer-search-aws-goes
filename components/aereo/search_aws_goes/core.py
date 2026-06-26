@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, Mapping, Sequence, cast
 
 import geopandas as gpd
 import s3fs
-from aereo.interfaces import SearchProvider, build_collection_asset_filters
+from aereo.interfaces import build_collection_asset_filters, empty_asset_result, normalize_geometry_input
 from aereo.schemas import AssetSchema
 from pandera.typing.geopandas import GeoDataFrame
+from pydantic import ConfigDict, validate_call
 from shapely.geometry.base import BaseGeometry
 from structlog import get_logger
 
@@ -116,164 +117,163 @@ SAT_TO_BUCKET = {
 }
 
 
-class SearchAwsGoes(SearchProvider):
-    """Search provider for NOAA GOES-R ABI products on AWS S3.
+def _normalize_channel(channel: str) -> str:
+    """Normalize a GOES channel identifier to a numeric string.
 
-    This plugin traverses the public NOAA GOES S3 buckets
+    Accepts inputs like ``"C01"``, ``"c01"``, ``"1"`` and returns ``"1"``.
+    Non-numeric values are returned unchanged.
+    """
+    ch_str = str(channel).upper()
+    if ch_str.startswith("C"):
+        ch_str = ch_str[1:]
+    try:
+        return str(int(ch_str))
+    except ValueError:
+        return str(channel)
+
+
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+def search_aws_goes(
+    collections: Mapping[str, Sequence[str]] | Sequence[str] | None,
+    intersects: BaseGeometry | dict[str, Any] | str | Path | None,
+    start_datetime: datetime | None,
+    end_datetime: datetime | None,
+    channels: list[str] | None = None,
+    satellites: list[str] | None = None,
+) -> GeoDataFrame[AssetSchema]:
+    """Search for GOES ABI products on AWS S3.
+
+    Traverses the public NOAA GOES S3 buckets
     (``noaa-goes16``, ``noaa-goes17``, ``noaa-goes18``, ``noaa-goes19``)
     by year/day/hour prefix and returns matching NetCDF assets as a
     validated GeoDataFrame.
+
+    Args:
+        collections: GOES product collections to search.
+        intersects: AOI geometry for spatial filtering.
+        start_datetime: Start of temporal window.
+        end_datetime: End of temporal window.
+        channels: Optional channel identifiers to filter (e.g. ``["C01"]``).
+        satellites: Optional satellites to include (default: all).
+
+    Returns:
+        A GeoDataFrame where each row represents a matched GOES granule
+        with columns defined by :class:`aereo.schemas.AssetSchema`.
     """
+    collections, asset_filters = build_collection_asset_filters(collections)
+    if not collections:
+        return empty_asset_result()
 
-    supported_collections: ClassVar[tuple[str, ...]] = tuple(SUPPORTED_PRODUCTS)
-    channels: list[str] | None = None
-    satellites: list[str] | None = None
-    anon: bool = True
-    key: str | None = None
-    secret: str | None = None
+    supported_set = set(SUPPORTED_PRODUCTS)
+    normalized_collections = []
+    for col in collections:
+        if col in supported_set:
+            normalized_collections.append(col)
+        else:
+            logger.warning("Skipping unsupported collection", collection=col)
 
-    @staticmethod
-    def _normalize_channel(channel: str) -> str:
-        """Normalize a GOES channel identifier to a numeric string.
+    if not normalized_collections:
+        return empty_asset_result()
 
-        Accepts inputs like ``"C01"``, ``"c01"``, ``"1"`` and returns ``"1"``.
-        Non-numeric values are returned unchanged.
-        """
-        ch_str = str(channel).upper()
-        if ch_str.startswith("C"):
-            ch_str = ch_str[1:]
-        try:
-            return str(int(ch_str))
-        except ValueError:
-            return str(channel)
+    if not start_datetime or not end_datetime:
+        return empty_asset_result()
 
-    def __call__(self) -> GeoDataFrame[AssetSchema]:
-        """Search for GOES ABI products on AWS S3.
+    fs = s3fs.S3FileSystem(anon=True)
 
-        Uses instance fields to configure the search.
+    requested_satellites = set(satellites) if satellites else set(SAT_TO_BUCKET.keys())
 
-        Returns:
-            A GeoDataFrame where each row represents a matched GOES granule
-            with columns defined by :class:`aereo.schemas.AssetSchema`.
-        """
-        collections, asset_filters = build_collection_asset_filters(self.collections)
-        if not collections:
-            return self.empty_result()
+    requested_channel_ids: set[str] | None = set()
+    if channels:
+        for ch in channels:
+            requested_channel_ids.add(_normalize_channel(ch))
+    for col in normalized_collections:
+        col_channels = asset_filters.get(col)
+        if col_channels:
+            for ch in col_channels:
+                requested_channel_ids.add(_normalize_channel(ch))
+    if not requested_channel_ids:
+        requested_channel_ids = None
 
-        supported_set = set(SUPPORTED_PRODUCTS)
-        normalized_collections = []
-        for col in collections:
-            if col in supported_set:
-                normalized_collections.append(col)
-            else:
-                logger.warning("Skipping unsupported collection", collection=col)
+    q_start = start_datetime
+    if q_start.tzinfo is None:
+        q_start = q_start.replace(tzinfo=timezone.utc)
+    q_end = end_datetime
+    if q_end.tzinfo is None:
+        q_end = q_end.replace(tzinfo=timezone.utc)
 
-        if not normalized_collections:
-            return self.empty_result()
+    search_start = q_start.replace(minute=0, second=0, microsecond=0)
+    search_end = q_end
 
-        if not self.start_datetime or not self.end_datetime:
-            return self.empty_result()
+    hourly_steps = []
+    current_hour = search_start
+    while current_hour <= search_end:
+        hourly_steps.append(current_hour)
+        current_hour += timedelta(hours=1)
 
-        fs_kwargs: dict[str, Any] = {"anon": self.anon}
-        if self.key is not None:
-            fs_kwargs["key"] = self.key
-        if self.secret is not None:
-            fs_kwargs["secret"] = self.secret
-        fs = s3fs.S3FileSystem(**fs_kwargs)
+    rows: list[dict[str, Any]] = []
 
-        requested_satellites = set(self.satellites) if self.satellites else set(SAT_TO_BUCKET.keys())
+    geom = normalize_geometry_input(intersects)
 
-        requested_channel_ids: set[str] = set()
-        if self.channels:
-            for ch in self.channels:
-                requested_channel_ids.add(self._normalize_channel(ch))
-        for col in normalized_collections:
-            col_channels = asset_filters.get(col)
-            if col_channels:
-                for ch in col_channels:
-                    requested_channel_ids.add(self._normalize_channel(ch))
-        requested_channel_ids = requested_channel_ids or None
+    for collection in normalized_collections:
+        for satellite in requested_satellites:
+            bucket = SAT_TO_BUCKET.get(satellite)
+            if not bucket:
+                continue
 
-        q_start = self.start_datetime
-        if q_start.tzinfo is None:
-            q_start = q_start.replace(tzinfo=timezone.utc)
-        q_end = self.end_datetime
-        if q_end.tzinfo is None:
-            q_end = q_end.replace(tzinfo=timezone.utc)
+            for h in hourly_steps:
+                prefix = f"{bucket}/{collection}/{h.year}/{h.strftime('%j')}/{h.strftime('%H')}/"
+                try:
+                    files = fs.ls(prefix, detail=True)
+                    for f_info in files:
+                        f_path = f_info["name"]
+                        if not f_path.endswith(".nc"):
+                            continue
 
-        search_start = q_start.replace(minute=0, second=0, microsecond=0)
-        search_end = q_end
+                        filename = f_path.split("/")[-1]
+                        meta = _parse_goes_filename(filename)
 
-        hourly_steps = []
-        current_hour = search_start
-        while current_hour <= search_end:
-            hourly_steps.append(current_hour)
-            current_hour += timedelta(hours=1)
+                        if not meta:
+                            continue
 
-        rows: list[dict[str, Any]] = []
+                        if meta["start_time"] > q_end or meta["end_time"] < q_start:
+                            continue
 
-        intersects = cast(BaseGeometry | None, self.intersects)
+                        file_channel_id = meta.get("channel_id")
+                        if (
+                            requested_channel_ids is not None
+                            and file_channel_id not in requested_channel_ids
+                        ):
+                            continue
 
-        for collection in normalized_collections:
-            for satellite in requested_satellites:
-                bucket = SAT_TO_BUCKET.get(satellite)
-                if not bucket:
-                    continue
+                        domain = _parse_domain(collection)
+                        geometry = _get_geometry(satellite, domain)
+                        if geom is not None and geometry is not None and not geom.intersects(geometry):
+                            continue
 
-                for h in hourly_steps:
-                    prefix = f"{bucket}/{collection}/{h.year}/{h.strftime('%j')}/{h.strftime('%H')}/"
-                    try:
-                        files = fs.ls(prefix, detail=True)
-                        for f_info in files:
-                            f_path = f_info["name"]
-                            if not f_path.endswith(".nc"):
-                                continue
+                        granule_id = Path(filename).stem
 
-                            filename = f_path.split("/")[-1]
-                            meta = _parse_goes_filename(filename)
+                        rows.append(
+                            {
+                                "id": granule_id,
+                                "collection": collection,
+                                "geometry": geometry,
+                                "start_time": meta["start_time"],
+                                "end_time": meta["end_time"],
+                                "href": f"s3://{f_path}",
+                                "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
+                                "size_mb": f_info["size"] / (1024 * 1024),
+                                "channel_id": file_channel_id,
+                                "granule_id": granule_id,
+                                "satellite": satellite,
+                                "domain": domain,
+                            }
+                        )
 
-                            if not meta:
-                                continue
+                except FileNotFoundError as e:
+                    logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
 
-                            if meta["start_time"] > q_end or meta["end_time"] < q_start:
-                                continue
+    if not rows:
+        return empty_asset_result()
 
-                            file_channel_id = meta.get("channel_id")
-                            if (
-                                requested_channel_ids is not None
-                                and file_channel_id not in requested_channel_ids
-                            ):
-                                continue
-
-                            domain = _parse_domain(collection)
-                            geometry = _get_geometry(satellite, domain)
-                            if intersects is not None and geometry is not None and not intersects.intersects(geometry):
-                                continue
-
-                            granule_id = Path(filename).stem
-
-                            rows.append(
-                                {
-                                    "id": granule_id,
-                                    "collection": collection,
-                                    "geometry": geometry,
-                                    "start_time": meta["start_time"],
-                                    "end_time": meta["end_time"],
-                                    "href": f"s3://{f_path}",
-                                    "https_url": f"https://{bucket}.s3.amazonaws.com/{f_path.replace(bucket + '/', '')}",
-                                    "size_mb": f_info["size"] / (1024 * 1024),
-                                    "channel_id": file_channel_id,
-                                    "granule_id": granule_id,
-                                    "satellite": satellite,
-                                    "domain": domain,
-                                }
-                            )
-
-                    except FileNotFoundError as e:
-                        logger.debug("S3 prefix not found", prefix=prefix, error=str(e))
-
-        if not rows:
-            return self.empty_result()
-
-        gdf = gpd.GeoDataFrame(rows, geometry="geometry")
-        return cast(GeoDataFrame, AssetSchema.validate(gdf))
+    gdf = gpd.GeoDataFrame(rows, geometry="geometry")
+    return cast(GeoDataFrame, AssetSchema.validate(gdf))

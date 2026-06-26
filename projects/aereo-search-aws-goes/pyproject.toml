@@ -23,7 +23,7 @@ authors = [{ name = "Fran Dorr" }]
 requires-python = ">=3.12"
 
 dependencies = [
-    "aereo>=1.1,<2.0",
+    "aereo",
     "geopandas>=1.1.2,<2.0.0",
     "pandera[geopandas]>=0.24.0,<0.25.0",
     "pyresample>=1.35.0",
@@ -37,7 +37,7 @@ Repository = "https://github.com/frandorr/aereo-search-aws-goes"
 Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 
 [project.entry-points."aereo.plugins"]
-search_aws_goes = "aereo.search_aws_goes.core:SearchAwsGoes"
+search_aws_goes = "aereo.search_aws_goes.core:search_aws_goes"
 
 [tool.hatch]
 build.dev-mode-dirs = [ "../../components", "../../bases", "../../development", "." ]

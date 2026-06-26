@@ -27,13 +27,15 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 from datetime import datetime, timezone
 from shapely.geometry import box
 from aereo.client import AereoClient
-from aereo.search_aws_goes import SearchAwsGoes
+from aereo.search_aws_goes import search_aws_goes
 
 # Define an AOI over the continental US
 aoi = box(-105, 25, -85, 45)
 
-# Configure the AWS GOES search provider
-search_provider = SearchAwsGoes(
+# Search for GOES data
+client = AereoClient()
+results = client.search(
+    search_provider=search_aws_goes,
     collections={"ABI-L1b-RadC": ["C01"]},
     intersects=aoi,
     start_datetime=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
@@ -41,12 +43,22 @@ search_provider = SearchAwsGoes(
     satellites=["GOES-16"],
 )
 
-# Search for GOES data
-client = AereoClient()
-results = client.search(search_provider=search_provider)
-
 print(f"Found {len(results)} granules")
 print(results[["collection", "start_time", "href"]].head())
+```
+
+Or with Hydra:
+
+```yaml
+_target_: aereo.search_aws_goes.core:search_aws_goes
+_partial_: true
+collections:
+  ABI-L1b-RadC: ["C01"]
+intersects: config/aoi/us.geojson
+start_datetime: "2025-06-01T12:00:00Z"
+end_datetime: "2025-06-01T13:00:00Z"
+satellites:
+  - GOES-16
 ```
 
 ---
