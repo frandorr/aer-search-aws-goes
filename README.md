@@ -6,6 +6,22 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 
 ---
 
+## Installation
+
+Add the plugin to your AEREO project with `uv`:
+
+```bash
+uv add aereo-search-aws-goes
+```
+
+Or with `pip`:
+
+```bash
+pip install aereo-search-aws-goes
+```
+
+Once installed, `aereo` automatically discovers the `search_aws_goes` plugin through Python entry points.
+
 ## ✨ Features
 
 *   **Multi-Satellite Support**: Discover data from GOES-16, GOES-17, GOES-18, and GOES-19.
