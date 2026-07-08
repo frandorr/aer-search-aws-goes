@@ -3,7 +3,7 @@ name: Publish package
 on:
   push:
     tags:
-      - "v*"
+      - "aereo-search-aws-goes-v*"
 
 jobs:
   publish:
@@ -23,14 +23,16 @@ jobs:
 
       - name: Build package
         run: |
-          uv build
-          ls -la dist || true
+          uv build --project projects/aereo-search-aws-goes --out-dir projects/aereo-search-aws-goes/dist
+          ls -la projects/aereo-search-aws-goes/dist || true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: projects/aereo-search-aws-goes/dist
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: projects/aereo-search-aws-goes/dist/*
           generate_release_notes: true

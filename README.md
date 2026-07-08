@@ -26,16 +26,13 @@ Powered by the [Polylith architecture](https://davidvujic.github.io/python-polyl
 ```python
 from datetime import datetime, timezone
 from shapely.geometry import box
-from aereo.client import AereoClient
 from aereo.search_aws_goes import search_aws_goes
 
 # Define an AOI over the continental US
 aoi = box(-105, 25, -85, 45)
 
 # Search for GOES data
-client = AereoClient()
-results = client.search(
-    search_provider=search_aws_goes,
+results = search_aws_goes(
     collections={"ABI-L1b-RadC": ["C01"]},
     intersects=aoi,
     start_datetime=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
