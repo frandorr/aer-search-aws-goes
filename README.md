@@ -30,6 +30,7 @@ Once installed, `aereo` automatically discovers the `search_aws_goes` plugin thr
     *   `ABI-L1b-RadC`: CONUS
     *   `ABI-L1b-RadM`: Mesoscale
 *   **Granular Filtering**: Filter results by exact time ranges and specific ABI channels (Bands 1-16).
+*   **Flood Products**: Discover NOAA ABI flood composites (`ABI-Flood-Day-TIF` / `ABI-Flood-Hourly-TIF`) via the `search_aws_goes_flood` plugin, with filtering by flood AOI tiles (e.g. `AOI004`).
 *   **Comprehensive Metadata**: Returns `GeoPandas` dataframes containing:
     *   `href` (S3 URL) and `https_url` for immediate data access.
     *   Granule IDs, timestamps, and file sizes.
@@ -58,6 +59,22 @@ results = search_aws_goes(
 
 print(f"Found {len(results)} granules")
 print(results[["collection", "start_time", "href"]].head())
+```
+
+### Flood composites
+
+```python
+from datetime import datetime, timezone
+from shapely.geometry import box
+from aereo.search_aws_goes import search_aws_goes_flood
+
+results = search_aws_goes_flood(
+    collections={"ABI-Flood-Day-TIF": ["AOI004"]},
+    intersects=box(-64, -34, -61, -31),
+    start_datetime=datetime(2025, 11, 3, tzinfo=timezone.utc),
+    end_datetime=datetime(2025, 11, 4, tzinfo=timezone.utc),
+    satellites=["GOES-19"],
+)
 ```
 
 Or with Hydra:
