@@ -194,3 +194,6 @@ docs/.obsidian/graph.json
 # AER public-release hygiene
 .venv/
 .mypy_cache/
+
+# Agent tooling (local only)
+.agents/
