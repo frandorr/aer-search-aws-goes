@@ -42,9 +42,6 @@ Documentation = "https://frandorr.github.io/aereo-search-aws-goes"
 [tool.uv]
 managed = true
 
-[tool.uv.sources]
-aereo = { path = "../aereo/projects/aereo", editable = true }
-
 [tool.uv.workspace]
 members = ["projects/*"]
 
